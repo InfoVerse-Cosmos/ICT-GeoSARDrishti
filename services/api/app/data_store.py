@@ -46,9 +46,15 @@ class DataStore:
                 if not _pack_ready(aoi_dir):
                     continue
                 try:
-                    self._manifests[aoi_dir.name] = json.loads((aoi_dir / "manifest.json").read_text(encoding="utf-8"))
+                    manifest = json.loads((aoi_dir / "manifest.json").read_text(encoding="utf-8"))
                 except (json.JSONDecodeError, OSError):
                     continue  # corrupt pack -> not listed (never replaced by made-up data)
+                # The folder name is the single source of truth for an AOI's identity. Forcing
+                # aoi_id to match the folder keeps /health, get(), aoi_dir() and the UI in sync,
+                # so renaming or deleting a folder cleanly renames/removes the AOI instead of
+                # leaving the stale aoi_id baked into manifest.json on disk.
+                manifest["aoi_id"] = aoi_dir.name
+                self._manifests[aoi_dir.name] = manifest
         self._signature = self._scan_signature()
 
     def refresh(self) -> None:

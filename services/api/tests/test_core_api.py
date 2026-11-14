@@ -270,6 +270,19 @@ def test_new_pack_appears_without_restarting(monkeypatch, tmp_path):
     assert [a["aoi_id"] for a in s.list_aois()] == ["aoi_fresh"]
 
 
+def test_folder_name_is_the_single_source_of_truth_for_identity(monkeypatch, tmp_path):
+    """A folder whose manifest.json still claims a different aoi_id (e.g. after a manual
+    folder rename) must be listed under the FOLDER name, so /health, get() and aoi_dir()
+    never drift apart. Renaming/removing the folder renames/removes the AOI."""
+    _make_pack(tmp_path, "aoi_renamed", manifest='{"aoi_id": "aoi_old_name", "bounds": [1, 2, 3, 4]}')
+    monkeypatch.setattr(ds_module, "DATA_STORE", tmp_path)
+    s = ds_module.DataStore()
+    s.load()
+    assert [a["aoi_id"] for a in s.list_aois()] == ["aoi_renamed"]   # folder wins, not "aoi_old_name"
+    assert s.get("aoi_renamed") is not None
+    assert s.get("aoi_old_name") is None
+
+
 def test_shipped_aoi_manifests_are_valid_json():
     for aoi_id in AOI_IDS:
         manifest = ds_module.DATA_STORE / aoi_id / "manifest.json"
