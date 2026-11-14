@@ -1,0 +1,15 @@
+# Keep line endings sane across Windows/macOS/Linux checkouts.
+* text=auto
+
+# Shell scripts must stay LF even on Windows checkouts.
+*.sh   text eol=lf
+
+# Windows batch / PowerShell must be CRLF so cmd.exe parses them correctly.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary-ish assets: never normalize.
+*.png  binary
+*.npz  binary
+*.h5   binary

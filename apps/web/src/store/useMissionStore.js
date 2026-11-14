@@ -15,6 +15,7 @@ export const useMissionStore = create((set) => ({
   timeline: [],
   activeDate: null,
   activeLayer: "open_water",
+  basemap: "dark", // dark | satellite | street | terrain | nasa
   clickedPixel: null, // { lat, lon, ...telemetry }
   evidenceCard: null,
   connection: "CONNECTING", // LIVE_API | LOCAL_CACHE | OFFLINE | CONNECTING
@@ -26,6 +27,7 @@ export const useMissionStore = create((set) => ({
     set({ timeline, activeDate: timeline.length ? timeline[timeline.length - 1].date : null }),
   setActiveDate: (activeDate) => set({ activeDate }),
   setActiveLayer: (activeLayer) => set({ activeLayer }),
+  setBasemap: (basemap) => set({ basemap }),
   setClickedPixel: (clickedPixel) => set({ clickedPixel }),
   setEvidenceCard: (evidenceCard) => set({ evidenceCard }),
   setConnection: (connection) => set({ connection }),

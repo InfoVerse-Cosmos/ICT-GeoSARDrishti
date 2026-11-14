@@ -6,6 +6,7 @@ import MapWorkspace from "@/components/MapWorkspace.jsx";
 import MonsoonTimeSlider from "@/components/MonsoonTimeSlider.jsx";
 import PixelTrajectoryChart from "@/components/PixelTrajectoryChart.jsx";
 import EvidenceCardPanel from "@/components/EvidenceCardPanel.jsx";
+import SceneMetricsPanel from "@/components/SceneMetricsPanel.jsx";
 import ExposureTable from "@/components/ExposureTable.jsx";
 import ProvenanceModal from "@/components/ProvenanceModal.jsx";
 
@@ -77,7 +78,7 @@ export default function App() {
             ))}
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            {tab === "metrics" && <EvidenceCardPanel />}
+            {tab === "metrics" && <SceneMetricsPanel />}
             {tab === "trajectory" && (
               <>
                 <PixelTrajectoryChart />
