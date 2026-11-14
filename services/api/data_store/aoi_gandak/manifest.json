@@ -1,0 +1,230 @@
+{
+  "aoi_id": "aoi_gandak",
+  "bounds": [
+    81.4623570772245,
+    23.4319123207809,
+    85.7868803262522,
+    30.1293467682275
+  ],
+  "default_zoom": 8,
+  "acquisition_gaps": [
+    "2026-07-27/2026-08-10"
+  ],
+  "timeline": [
+    {
+      "date": "2026-09-04",
+      "granule_id": "NISAR_L2_PR_GCOV_029_149_D_075_2005_DHDH_M_20260904T130705_20260904T130739_P05023_N_F_J_001",
+      "track_frame": "track-149 mosaic",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 2065.55,
+        "flooded_veg_km2": 47.85,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 154300.7,
+        "valid_pixel_pct": 48.8,
+        "aoi_coverage_pct": 48.8,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-09-28",
+      "granule_id": "NISAR_L2_PR_GCOV_031_149_D_075_2005_DHDH_M_20260928T130705_20260928T130739_P05023_N_F_J_001",
+      "track_frame": "track-149 mosaic",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 1677.0,
+        "flooded_veg_km2": 172.95,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 154585.49,
+        "valid_pixel_pct": 48.8,
+        "aoi_coverage_pct": 48.8,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-10-10",
+      "granule_id": "NISAR_L2_PR_GCOV_032_149_D_075_2005_DHDH_M_20261010T130705_20261010T130739_P05023_N_F_J_001",
+      "track_frame": "track-149 mosaic",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 1.15,
+        "flooded_veg_km2": 0.0,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 50339.97,
+        "valid_pixel_pct": 15.7,
+        "aoi_coverage_pct": 15.7,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": true
+      }
+    }
+  ],
+  "provenance": {
+    "granules": [
+      "NISAR_L2_PR_GCOV_029_149_D_075_2005_DHDH_M_20260904T130705_20260904T130739_P05023_N_F_J_001",
+      "NISAR_L2_PR_GCOV_031_149_D_075_2005_DHDH_M_20260928T130705_20260928T130739_P05023_N_F_J_001",
+      "NISAR_L2_PR_GCOV_032_149_D_075_2005_DHDH_M_20261010T130705_20261010T130739_P05023_N_F_J_001"
+    ],
+    "otsu_thresholds": {
+      "2026-09-04": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-09-28": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-10-10": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      }
+    },
+    "delta_hh_params": {
+      "min_delta_hh_db": 3.0,
+      "min_delta_ratio_db": 1.5
+    },
+    "reference_date": "2026-10-10",
+    "calibration_check": null,
+    "masks": {
+      "vegetation": "none supplied \u2014 double-bounce test applied to all non-water pixels",
+      "slope": "not applied (no DEM supplied)",
+      "validity": "GCOV mask 0 (not fully focused) / 255 (outside swath), non-finite and \u03b30<=0 excluded"
+    },
+    "threshold_method": "Otsu on the dark tail (HH<-10 dB, HV<-16 dB), capped to HH -22..-16 dB and HV -30..-22 dB so land/sand/wet soil is not called water",
+    "processing": {
+      "generated_at": "2026-11-14T21:19:55Z",
+      "grid_res_m": 759.0,
+      "speckle": "multilook + 3x3 median (linear)",
+      "crs_native": [
+        32644
+      ],
+      "single_pol_mode": false,
+      "pipeline": "scripts/02_subset_and_classify_sar.py",
+      "stage03_at": "2026-11-14T21:19:56Z"
+    },
+    "mosaic": {
+      "selected_track": "track-149 mosaic",
+      "dates": {
+        "2026-09-04": {
+          "frames": [
+            "149/074",
+            "149/075",
+            "149/076"
+          ],
+          "granule_ids": [
+            "NISAR_L2_PR_GCOV_029_149_D_074_4005_DHDH_A_20260904T130631_20260904T130706_P05023_N_F_J_001",
+            "NISAR_L2_PR_GCOV_029_149_D_075_2005_DHDH_M_20260904T130705_20260904T130739_P05023_N_F_J_001",
+            "NISAR_L2_PR_GCOV_029_149_D_076_2005_QPDH_A_20260904T130738_20260904T130813_P05023_N_F_J_001"
+          ],
+          "per_frame_coverage_pct": {
+            "149/074": 33.5,
+            "149/075": 36.1,
+            "149/076": 31.6
+          },
+          "crs_native": [
+            32644
+          ]
+        },
+        "2026-09-28": {
+          "frames": [
+            "149/074",
+            "149/075",
+            "149/076"
+          ],
+          "granule_ids": [
+            "NISAR_L2_PR_GCOV_031_149_D_074_4005_DHDH_A_20260928T130631_20260928T130706_P05023_N_F_J_001",
+            "NISAR_L2_PR_GCOV_031_149_D_075_2005_DHDH_M_20260928T130705_20260928T130739_P05023_N_F_J_001",
+            "NISAR_L2_PR_GCOV_031_149_D_076_2005_QPDH_A_20260928T130738_20260928T130813_P05023_N_F_J_001"
+          ],
+          "per_frame_coverage_pct": {
+            "149/074": 33.5,
+            "149/075": 36.1,
+            "149/076": 31.6
+          },
+          "crs_native": [
+            32644
+          ]
+        },
+        "2026-10-10": {
+          "frames": [
+            "149/075"
+          ],
+          "granule_ids": [
+            "NISAR_L2_PR_GCOV_032_149_D_075_2005_DHDH_M_20261010T130705_20261010T130739_P05023_N_F_J_001"
+          ],
+          "per_frame_coverage_pct": {
+            "149/075": 36.1
+          },
+          "crs_native": [
+            32644
+          ]
+        }
+      },
+      "note": "Per date, each frame is reprojected onto the common AOI grid and merged in linear power (NaN-aware mean over the frame overlap); per-date validity is decoupled from the dry reference so coverage-only dates still show HH/HV."
+    },
+    "limitations": [
+      "Only 3 same-track dates available \u2014 Plan C change comparison, not a full-season hydroperiod.",
+      "Multi-frame mosaic: 2026-10-10 has fewer frames / partial coverage than the fullest date, so where the dry reference is not imaged change-vs-reference (flooded-vegetation) is not computed \u2014 open-water and raw HH/HV trajectories are still shown there."
+    ],
+    "gmm": {
+      "k": 5,
+      "k_wet_gmm": 4,
+      "method": "never-wet pixels = Stable Dry Upland by definition; GMM clusters the ever-wet pixels",
+      "features": [
+        "mean_HH",
+        "min_HH",
+        "max_dHH",
+        "mean_HH-HV",
+        "M_open/N",
+        "M_fveg/N"
+      ],
+      "random_state": 42,
+      "regime_area_km2": {
+        "Permanent River / Deep Channel": 0.0,
+        "Seasonal Open Floodplain / Beel": 267.49,
+        "Seasonally Flooded Canopy / Tall Grassland": 200.04,
+        "Seasonal Paddy-Like Inundation Cycle": 0.0,
+        "Stable Dry Upland / Levee": 49873.6
+      },
+      "mapping_rule": "wet<15%\u2192Dry Upland; open-dominant & open\u226590%\u2192Permanent River; open-dominant\u2192Beel; flooded-veg-dominant & cropland\u226550%\u2192Paddy cycle; else\u2192Flooded Canopy"
+    }
+  },
+  "name": "Gandak River [Bihar]",
+  "track_frame": "track-149 mosaic",
+  "polarization": "HH+HV",
+  "single_pol_mode": false,
+  "fallback_plan": "C",
+  "reference_date": "2026-10-10",
+  "layers": [
+    "open_water",
+    "flooded_veg",
+    "hydroperiod",
+    "gmm_regimes"
+  ],
+  "synthetic_test_data": false,
+  "grid": {
+    "rows": 982,
+    "cols": 566,
+    "res_m": 759.0,
+    "pixel_area_km2": 0.57649
+  },
+  "season_summary": {
+    "n_dates": 3,
+    "ever_wet_km2": 2509.45,
+    "wet_every_observation_km2": 1415.85,
+    "max_wet_observations": 2
+  }
+}
