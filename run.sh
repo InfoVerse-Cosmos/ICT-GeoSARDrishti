@@ -30,16 +30,30 @@ fi
 if ! command -v npm >/dev/null 2>&1; then err "npm not found. Install Node 18+."; exit 1; fi
 
 # --- backend: venv + deps ---------------------------------------------------
-if [[ ! -d "$API_DIR/.venv" ]]; then
-  note "Creating backend virtualenv…"
-  "$PYBIN" -m venv "$API_DIR/.venv"
+VENV="$API_DIR/.venv"
+# If an existing venv was built with a different Python than the one we picked, rebuild it.
+if [[ -d "$VENV" ]]; then
+  VENV_VER="$("$VENV/bin/python" -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || echo "?")"
+  if [[ "$VENV_VER" != "$PYVER" ]]; then
+    note "Existing venv is Python $VENV_VER but selected is $PYVER — recreating it."
+    rm -rf "$VENV"
+  fi
+fi
+if [[ ! -d "$VENV" ]]; then
+  note "Creating backend virtualenv (Python $PYVER)…"
+  "$PYBIN" -m venv "$VENV"
 fi
 # shellcheck disable=SC1091
-source "$API_DIR/.venv/bin/activate"
+source "$VENV/bin/activate"
 if [[ "$DO_INSTALL" == "1" ]]; then
   note "Installing backend deps…"
   pip install --quiet --upgrade pip
-  pip install --quiet -r "$API_DIR/requirements.txt"
+  if ! pip install -r "$API_DIR/requirements.txt"; then
+    err "Backend dependency install failed."
+    err "Most likely your Python ($PYVER) has no prebuilt wheel for a dependency and the source build failed."
+    err "Fix: install Python 3.11 (e.g. 'brew install python@3.11'), delete services/api/.venv, then re-run ./run.sh."
+    exit 1
+  fi
 fi
 [[ -f "$API_DIR/.env" ]] || { [[ -f "$ROOT/.env.example" ]] && cp "$ROOT/.env.example" "$API_DIR/.env" && note "Created services/api/.env from template."; }
 

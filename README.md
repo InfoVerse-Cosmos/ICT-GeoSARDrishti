@@ -107,13 +107,22 @@ Full design: [`Docs/geosar_intelligence_srs_and_implementation_blueprint.md`](Do
 ```bash
 git clone https://github.com/InfoVerse-Cosmos/ICT-GeoSARDrishti.git
 cd ICT-GeoSARDrishti
+
+# macOS / Linux
 ./run.sh            # or: npm run dev
-# Installs deps on first run, starts FastAPI (:8000) + Vite (:5173), waits for /health,
-# wires the frontend to the backend, and stops both on Ctrl-C.
-# API → http://localhost:8000/docs    UI → http://localhost:5173
-# Fast restart (skip install): ./run.sh --no-install
+# Windows
+run.bat
 ```
-The backend boots in deterministic local-cache mode with **no** token required.
+Either script installs deps on first run, starts FastAPI (:8000) + Vite (:5173), wires the
+frontend to the backend, and opens both. Skip installs on a fast restart with
+`./run.sh --no-install` (or `run.bat --no-install`).
+
+- API → http://localhost:8000/docs
+- UI → http://localhost:5173
+
+On macOS/Linux `run.sh` runs both in one terminal (Ctrl-C stops both); on Windows `run.bat`
+opens two windows (close them to stop). The backend boots in deterministic local-cache mode
+with **no** token required.
 
 ### Or run each tier manually
 ```bash

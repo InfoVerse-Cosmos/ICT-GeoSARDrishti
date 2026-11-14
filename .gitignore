@@ -30,3 +30,7 @@ scripts/_work/
 
 # Logs
 *.log
+
+# Agent / workflow scratch dirs
+.agents/
+.worktrees/
