@@ -48,10 +48,10 @@ export default function PixelTrajectoryChart() {
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
-          <CartesianGrid stroke="#1E293B" strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fill: "#94A3B8", fontSize: 10 }} />
-          <YAxis tick={{ fill: "#94A3B8", fontSize: 10 }} domain={["auto", "auto"]} />
-          <Tooltip contentStyle={{ background: "#111827", border: "1px solid #1E293B", fontSize: 11 }} />
+          <CartesianGrid stroke="rgb(var(--workspace-line, 30 41 59))" strokeDasharray="3 3" />
+          <XAxis dataKey="date" tick={{ fill: "rgb(var(--workspace-muted, 148 163 184))", fontSize: 10 }} />
+          <YAxis tick={{ fill: "rgb(var(--workspace-muted, 148 163 184))", fontSize: 10 }} domain={["auto", "auto"]} />
+          <Tooltip contentStyle={{ background: "rgb(var(--workspace-panel, 17 24 39))", color: "rgb(var(--workspace-fg, 226 232 240))", border: "1px solid rgb(var(--workspace-line, 30 41 59))", fontSize: 11 }} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <ReferenceLine
             y={owThreshold}
@@ -78,7 +78,7 @@ export default function PixelTrajectoryChart() {
             <span
               key={d}
               className="rounded px-1"
-              style={{ backgroundColor: `${CLASS_COLOUR[classes[i]] || "#334155"}55`, color: "#E2E8F0" }}
+              style={{ backgroundColor: `${CLASS_COLOUR[classes[i]] || "#334155"}55`, color: "rgb(var(--workspace-fg, 226 232 240))" }}
               title={`${d}: ${classes[i]}`}
             >
               {String(d).slice(5)} {CLASS_LABEL[classes[i]] || classes[i]}

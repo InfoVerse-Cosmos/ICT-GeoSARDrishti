@@ -145,7 +145,7 @@ export default function MapWorkspace({ onPixelInspected }) {
       style: {
         version: 8,
         sources: {},
-        layers: [{ id: "bg", type: "background", paint: { "background-color": "#0B0F19" } }],
+        layers: [{ id: "bg", type: "background", paint: { "background-color": "#111111" } }],
       },
       center: [94.1, 26.9],
       zoom: 9,

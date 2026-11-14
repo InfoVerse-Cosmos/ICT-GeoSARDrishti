@@ -1,0 +1,5 @@
+/* Shared locally hosted typography for the landing page and workspace. */
+@font-face { font-family: 'Landing Inter'; src: url('/fonts/inter-bold.ttf') format('truetype'); font-weight: 600 700; font-display: swap; }
+@font-face { font-family: 'Landing Inter'; src: url('/fonts/inter-extrabold.ttf') format('truetype'); font-weight: 800 900; font-display: swap; }
+@font-face { font-family: 'Landing Public Sans'; src: url('/fonts/public-sans-regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Landing DM Mono'; src: url('/fonts/dm-mono-regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }

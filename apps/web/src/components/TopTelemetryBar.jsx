@@ -12,6 +12,7 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
   return (
     <header className="flex flex-wrap items-center gap-4 border-b border-grid bg-panel px-4 py-2">
       <div className="flex items-center gap-2">
+        <a href="#/" aria-label="Back to landing page" className="text-sm text-slate-400 hover:text-cyan">← Home</a>
         <span className="rounded bg-nasa px-2 py-1 text-xs font-bold text-white">NASA–ISRO</span>
         <span className="telemetry-mono text-sm font-semibold text-cyan">NISAR · GeoSAR Drishti</span>
       </div>

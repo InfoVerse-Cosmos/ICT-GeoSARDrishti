@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, loadFallbackManifest } from "@/api/client.js";
 import { useMissionStore } from "@/store/useMissionStore.js";
 import TopTelemetryBar from "@/components/TopTelemetryBar.jsx";
@@ -14,6 +14,7 @@ import ErrorBoundary from "@/components/ErrorBoundary.jsx";
 import SimpleSummary from "@/components/SimpleSummary.jsx";
 
 const RETRY_MS = 5000;
+const LandingLayout = lazy(() => import("@/components/landing/LandingLayout.jsx"));
 
 function metaFrom(src) {
   if (!src) return {};
@@ -25,6 +26,10 @@ function metaFrom(src) {
 }
 
 function MissionApp() {
+  const [workspaceTheme] = useState(() => {
+    try { return localStorage.getItem("geosar-landing-theme") === "dark" ? "dark" : "light"; }
+    catch { return "light"; }
+  });
   const { audienceMode, activeAoiId, connection, setAois, setTimeline, setConnection, setFallbackActive } = useMissionStore();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
@@ -83,7 +88,7 @@ function MissionApp() {
   }, [activeAoiId, connection, setTimeline]);
 
   return (
-    <div className="flex min-h-full lg:h-full flex-col bg-orbital text-slate-200">
+    <div data-theme={workspaceTheme} className="mission-workspace flex min-h-full lg:h-full flex-col bg-orbital text-slate-200">
       <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} />
       {uplink.establishing && (
         <div
@@ -153,4 +158,15 @@ function MissionApp() {
   );
 }
 
-export default function App() { return <ErrorBoundary><MissionApp /></ErrorBoundary>; }
+export default function App() {
+  const [exploring, setExploring] = useState(() => window.location.hash === "#/explore" || window.location.pathname.replace(/\/$/, "").endsWith("/explore"));
+  useEffect(() => {
+    const navigate = () => {
+      setExploring(window.location.hash === "#/explore");
+      if (window.location.hash.startsWith("#/")) window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
+  return <ErrorBoundary>{exploring ? <MissionApp /> : <Suspense fallback={<div className="p-8 text-slate-300">Loading GeoSAR Drishti…</div>}><LandingLayout /></Suspense>}</ErrorBoundary>;
+}
