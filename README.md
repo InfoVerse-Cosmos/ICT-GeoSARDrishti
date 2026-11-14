@@ -151,32 +151,29 @@ npm run dev
 
 **Deploy.** API: `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}` on Render/Railway/Cloud Run (set `EARTHDATA_TOKEN`, `CORS_ORIGINS`, optional `LLM_API_KEY`). Web: build `apps/web` (`npm run build`, output `dist`) on GitHub Pages / Vercel / Netlify with `VITE_API_BASE_URL` pointed at the API.
 
-### Bring your own AOI (analyse your own NISAR data)
+### Bring your own data (analyse your own NISAR area)
 
-Clone the repo and build a data pack for **your own area** from **your own** NISAR L2 GCOV granules, with one command that wraps the same pipeline (`scripts/geosar_pipeline`) that produced the shipped packs.
+The project is open source: clone it (or download the ZIP and extract it) and analyse **your own area** from **your own** NISAR L2 GCOV granules — no bounding box, config, or code editing needed. The one command wraps the same pipeline (`scripts/geosar_pipeline`) that produced the shipped packs.
 
-**1. Install the offline-processing dependencies** (heavier than the API runtime):
+**1. Get NISAR L2 GCOV granules** for your area and monsoon window (it is your responsibility to obtain the data). Download the `.h5` files from either source — both distribute the same NISAR GCOV product:
+- **NASA Earthdata / ASF** — <https://search.earthdata.nasa.gov/> (collections `NISAR_L2_GCOV_PROVISIONAL_V1`, `NISAR_L2_GCOV_V1`)
+- **ISRO Bhoonidhi** — <https://bhoonidhi.nrsc.gov.in/>
+
+**2. Drop the `.h5` files into the `DATA/` folder** at the repo root (see [`DATA/README.md`](DATA/README.md)). No unzip or rename needed. They are large and stay only on your machine — git never commits them.
+
+**3. Run one command** from the repo root:
 ```bash
-pip install -r scripts/requirements.txt   # numpy, h5py, pyproj (+ scikit-learn, rasterio, geopandas, osmnx)
+./analyze.sh        # macOS / Linux
+analyze.bat         # Windows
 ```
+It auto-detects the area from your granules' footprints, builds the analysis pack, and starts the app. On first run it also creates a small processing environment and installs the dependencies.
 
-**2. Get NISAR L2 GCOV granules** for your area and monsoon window — download `.h5` files from [NASA Earthdata Search](https://search.earthdata.nasa.gov/) / ASF DAAC (collections `NISAR_L2_GCOV_PROVISIONAL_V1`, `NISAR_L2_GCOV_V1`) into one folder. Granules are large and are **never** committed (`.gitignore` excludes `*.h5`).
+**4. Open <http://localhost:5173>** and pick your area in the top-bar selector. Open the **📊 Analysis Report** for a plain-language summary, or flip to **Scientist** mode for the full console.
 
-**3. Build the pack** — pass an AOI id, a name, the bounding box (`west,south,east,north` WGS84), and the granule folder:
-```bash
-python scripts/byod_build_aoi.py \
-    --aoi-id aoi_my_delta --name "My River Delta" \
-    --bbox 68.95,23.44,74.1,26.18 \
-    --h5-dir /path/to/your/nisar_granules \
-    --with-regimes                      # optional stage 03 GMM regimes (needs scikit-learn)
-    # optional: --osm-file my_area.geojson   stage 04 inspection candidates (offline-safe)
-    #           --worldcover wc.tif --dem dem.tif --jrc jrc.tif --dswx dswx.tif
-```
-This writes `services/api/data_store/<aoi-id>/` (manifest, `time_series_cube.npz`, `overlays/*.png`). The pipeline auto-selects the longest same-track stack; give `--track-frame` to force one. See `python scripts/byod_build_aoi.py --help` for every option.
-
-**4. View it** — restart the API (or let it reload) and refresh the app. Your AOI appears in the top-bar selector; open the **📊 Analysis Report** for a plain-language summary, or flip to **Scientist** mode for the full console.
-
-> Smoke test with no download of your own: run it against the repo's existing Gujarat granules (or any folder of NISAR GCOV `.h5`) into a throwaway store — `--data-store /tmp/byod_store` — to confirm your environment produces a valid pack.
+> **Under the hood (two folders):** you drop raw granules into `DATA/` (input); the command processes them into a small pack under `services/api/data_store/<aoi-id>/` (`manifest.json`, `time_series_cube.npz`, `overlays/*.png`) which the app auto-loads on startup. You never edit anything inside `services/`.
+>
+> **Advanced / manual:** call the builder directly for custom ids, areas, or extra layers —
+> `python scripts/byod_build_aoi.py --aoi-id aoi_my_delta --name "My Delta" --bbox w,s,e,n --h5-dir /path --with-regimes --osm-file my_area.geojson` (see `--help`). Requires `pip install -r scripts/requirements.txt`.
 >
 > **Honest framing applies to every pack:** results are a radar-derived surface/canopy-water indication for field inspection — not a confirmed flood, depth, or damage claim. Hydroperiod is reported as *M of N valid NISAR observations*, never "days flooded".
 

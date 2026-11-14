@@ -21,16 +21,21 @@ is "M of N valid NISAR observations", never "days flooded".
 Prerequisites:  pip install -r scripts/requirements.txt   (needs numpy, h5py, pyproj;
 GMM needs scikit-learn; OSM exposure needs geopandas/osmnx/shapely).
 
+Easiest: drop your .h5 granules in the repo-root DATA/ folder and run ./analyze.sh
+(it calls this script with sensible defaults). Or call it directly:
+
 Examples
 --------
-  # Minimal: classify + hydroperiod only
+  # Zero-config: read DATA/, auto-detect the area from the granule footprints
+  python scripts/byod_build_aoi.py
+
+  # Explicit id / name / area / folder (all optional)
   python scripts/byod_build_aoi.py \
       --aoi-id aoi_my_delta --name "My River Delta" \
       --bbox 68.95,23.44,74.1,26.18 --h5-dir ~/nisar_granules
 
   # With GMM regimes and a local OSM extract for the inspection log
   python scripts/byod_build_aoi.py --aoi-id aoi_my_delta --name "My Delta" \
-      --bbox 68.95,23.44,74.1,26.18 --h5-dir ~/nisar_granules \
       --with-regimes --osm-file ~/my_area_osm.geojson
 """
 from __future__ import annotations
@@ -60,15 +65,84 @@ def parse_bbox(text: str) -> list[float]:
     return [w, s, e, n]
 
 
+def _footprint_bbox(path):
+    """Granule boundingPolygon -> [west,south,east,north], or None.
+
+    NISAR WKT is 3D ("POLYGON ((lon lat height, ...))"), so each vertex has three
+    numbers; take the first two per vertex (lon, lat) and ignore the height.
+    """
+    import h5py
+
+    from geosar_pipeline import gcov
+
+    with h5py.File(path, "r") as f:
+        ident = gcov.read_identification(f)
+    wkt = (ident or {}).get("boundingPolygon", "") or ""
+    if "((" not in wkt or "))" not in wkt:
+        return None
+    body = wkt[wkt.index("((") + 2:wkt.rindex("))")]
+    lons, lats = [], []
+    for vertex in body.split(","):
+        parts = vertex.split()
+        if len(parts) >= 2:
+            try:
+                lons.append(float(parts[0]))
+                lats.append(float(parts[1]))
+            except ValueError:
+                continue
+    if not lons:
+        return None
+    return [min(lons), min(lats), max(lons), max(lats)]
+
+
+def autodetect_bbox(h5_files):
+    """Union of the granule boundingPolygon footprints -> [west,south,east,north], or None."""
+    boxes = []
+    for path in h5_files:
+        try:
+            fp = _footprint_bbox(path)
+        except Exception as exc:  # noqa: BLE001 - a bad granule should not abort auto-detection
+            print(f"[byod] warning: could not read footprint of {path.name}: {exc}")
+            fp = None
+        if fp:
+            boxes.append(fp)
+    if not boxes:
+        return None
+    return [min(b[0] for b in boxes), min(b[1] for b in boxes),
+            max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def default_name(aoi_id: str) -> str:
+    base = aoi_id[4:] if aoi_id.startswith("aoi_") else aoi_id
+    return base.replace("_", " ").title() or aoi_id
+
+
+def auto_res_m(bounds, floor_m=100.0, max_dim=1400, max_px=1_600_000):
+    """Pick a grid resolution from the AOI size: fine (down to ~100 m) for small areas,
+    coarser for large ones, so the pack stays light and the build stays fast for any AOI."""
+    res = floor_m
+    for _ in range(40):
+        rows, cols, _, _ = common.aoi_grid(bounds, res)
+        if rows <= max_dim and cols <= max_dim and rows * cols <= max_px:
+            return float(round(res))
+        res *= 1.5
+    return float(round(res))
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--aoi-id", required=True, help="pack id, lowercase a-z0-9_ (e.g. aoi_my_delta)")
-    p.add_argument("--name", help="human-readable AOI name (shown in the app selector)")
-    p.add_argument("--bbox", required=True, type=parse_bbox, help="west,south,east,north (WGS84)")
-    p.add_argument("--h5-dir", required=True, help="folder holding your NISAR GCOV .h5 granules")
+    p.add_argument("--aoi-id", default="aoi_my_data",
+                   help="pack id, lowercase a-z0-9_ (default: aoi_my_data)")
+    p.add_argument("--name", help="human-readable AOI name shown in the app selector (default: from --aoi-id)")
+    p.add_argument("--bbox", type=parse_bbox,
+                   help="west,south,east,north (WGS84); default: auto-detected from the granule footprints")
+    p.add_argument("--h5-dir", default=str(common.REPO_ROOT / "DATA"),
+                   help="folder holding your NISAR GCOV .h5 granules (default: the repo-root DATA/ folder)")
     p.add_argument("--track-frame", help="force a track/frame (default: longest same-track stack)")
     p.add_argument("--ref-date", help="dry reference date YYYY-MM-DD (default: latest acquisition)")
-    p.add_argument("--res-m", type=float, default=100.0, help="output grid resolution in metres (default 100)")
+    p.add_argument("--res-m", type=float, default=None,
+                   help="output grid resolution in metres (default: auto — finer for small areas, "
+                        "coarser for large, to keep the pack light)")
     p.add_argument("--default-zoom", type=int, default=8, help="initial map zoom for this AOI")
     p.add_argument("--worldcover", help="ESA WorldCover GeoTIFF (vegetation mask + paddy sub-label)")
     p.add_argument("--dem", help="Copernicus DEM GeoTIFF (slope > 5 deg mask)")
@@ -90,25 +164,47 @@ def main() -> int:
     store = common.data_store(args.data_store)
     h5_dir = Path(args.h5_dir).expanduser()
     if not h5_dir.is_dir():
-        p.error(f"--h5-dir not found: {h5_dir}")
+        p.error(
+            f"granule folder not found: {h5_dir}\n"
+            "       Put your NISAR L2 GCOV .h5 granules in the repo-root DATA/ folder "
+            "(or pass --h5-dir). See DATA/README.md."
+        )
+    h5_files = sorted(h5_dir.glob("*.h5"))
+    if not h5_files:
+        p.error(
+            f"no NISAR .h5 granules found in {h5_dir}\n"
+            "       Download NISAR L2 GCOV granules for your area from NASA Earthdata/ASF or "
+            "ISRO Bhoonidhi (your responsibility), drop the .h5 files into DATA/, and run again."
+        )
+
+    bbox = args.bbox or autodetect_bbox(h5_files)
+    if bbox is None:
+        p.error("could not auto-detect an AOI from the granule footprints; "
+                "pass one explicitly with --bbox west,south,east,north")
+    if args.bbox is None:
+        print(f"[byod] auto-detected AOI bbox from {len(h5_files)} granule footprint(s): {bbox}")
+
+    res_m = args.res_m if args.res_m else auto_res_m(bbox)
+    if not args.res_m:
+        print(f"[byod] auto grid resolution: {res_m:.0f} m")
 
     # Register the AOI bounds so the pipeline's footprint gate (which keys on AOI_BOUNDS)
     # accepts this bring-your-own AOI, then seed the manifest the pipeline reads.
-    common.AOI_BOUNDS[aoi_id] = args.bbox
+    common.AOI_BOUNDS[aoi_id] = bbox
     manifest = common.load_manifest(aoi_id, store)
     manifest.update({
         "aoi_id": aoi_id,
-        "name": args.name or aoi_id,
-        "bounds": args.bbox,
+        "name": args.name or default_name(aoi_id),
+        "bounds": bbox,
         "default_zoom": args.default_zoom,
     })
     common.save_manifest(aoi_id, store, manifest)
 
-    print(f"[byod] AOI {aoi_id} '{manifest['name']}' bbox={args.bbox} -> {store}")
+    print(f"[byod] AOI {aoi_id} '{manifest['name']}' bbox={bbox} -> {store}")
 
     # ---- stage 02: classify + hydroperiod (required) --------------------------------
     manifest = process.run(aoi_id, h5_dir, store, track_frame=args.track_frame, ref_date=args.ref_date,
-                           res_m=args.res_m, worldcover=args.worldcover, dem=args.dem)
+                           res_m=res_m, worldcover=args.worldcover, dem=args.dem)
     print(f"[byod] stage 02 done · plan {manifest.get('fallback_plan')} · "
           f"{len(manifest.get('timeline', []))} dates · track {manifest.get('track_frame')}")
     for t in manifest.get("timeline", []):

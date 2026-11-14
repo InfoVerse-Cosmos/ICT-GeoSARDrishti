@@ -1,0 +1,5 @@
+# Keep the DATA/ folder in the repo, but never commit the data you drop in it.
+# Your downloaded NISAR granules are large and private — they stay on your machine.
+*
+!.gitignore
+!README.md
