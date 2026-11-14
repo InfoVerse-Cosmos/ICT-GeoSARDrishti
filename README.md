@@ -95,7 +95,9 @@ Full design: [`Docs/geosar_intelligence_srs_and_implementation_blueprint.md`](Do
 
 - **Live app:** _TBD_ (also pinned at the top of this README)
 - **Demo video:** _TBD (optional)_
-- **Screenshots:** _add to `Docs/screenshots/` and embed here before the freeze_
+- **Screenshots:** stored in `assets/screenshots/` (tracked in-repo)
+
+![GeoSAR Drishti UI overview](assets/screenshots/ui-overview.png)
 
 ```text
 [ Top mission bar: NISAR · dual-AOI selector · granule/track/pol/maturity pills · LIVE API / LOCAL CACHE ]
