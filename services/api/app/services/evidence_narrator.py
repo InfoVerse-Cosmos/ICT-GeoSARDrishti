@@ -45,7 +45,13 @@ def deterministic_card(t: dict) -> dict:
     )
 
     physics = "No double-bounce surge recorded at this pixel."
-    if delta_hh is not None and peak_date:
+    open_sig = bool(m_open and min_hh is not None and min_hh_date)
+    if open_sig and delta_hh is not None and delta_hh < 3.0:
+        # Water pixel: do not talk about a "change" that is really a darkening; just say why it is water.
+        physics = ("HH stayed below the dry reference on every date, so no double-bounce surge."
+                   if delta_hh < 0 else
+                   "HH never rose above the dry reference by +3.0 dB or more, so no double-bounce surge.")
+    elif delta_hh is not None and peak_date:
         detail = ""
         if baseline is not None and peak_hh is not None:
             detail = f" (from {baseline:.1f} dB dry baseline to {peak_hh:.1f} dB)"
@@ -100,14 +106,17 @@ def deterministic_card(t: dict) -> dict:
 def _worldcover_text(wc: int | None, jrc: float | None) -> str:
     names = {10: "Tree Cover", 30: "Grassland", 40: "Cropland",
              90: "Herbaceous Wetland", 95: "Mangroves", 80: "Permanent Water"}
-    label = names.get(wc, "Unclassified") if wc is not None else "Unavailable"
-    jrc_text = ""
+    parts = []
+    if wc is not None:
+        parts.append(f"Classified as {names.get(wc, 'Unclassified')} in ESA WorldCover (10 m).")
+    else:
+        parts.append("ESA WorldCover land cover is not loaded in this data pack.")
     if jrc is not None:
-        jrc_text = (
-            f" Optical JRC historical water occurrence is {jrc:.0f}%"
+        parts.append(
+            f"Optical JRC historical water occurrence is {jrc:.0f}%"
             + (" (low — optical sensors cannot penetrate canopy)." if jrc < 20 else ".")
         )
-    return f"Classified as {label} in ESA WorldCover (10 m).{jrc_text}"
+    return " ".join(parts)
 
 
 async def build_evidence_card(telemetry: dict):

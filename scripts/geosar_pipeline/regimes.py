@@ -97,24 +97,34 @@ def run(aoi_id: str, store: Path, *, k: int = 5, jrc: str | None = None, dswx: s
 
     # ---- GMM regimes ---------------------------------------------------------------------
     X, valid = build_features(cube)
-    Xv = X[valid]
+    # Two-stage regimes (so the GMM is not wasted on dry land, which dominates a few-date stack):
+    #   1) pixels never wet in any valid observation are "Stable Dry Upland / Levee" by definition;
+    #   2) a GMM (k = 4) clusters the ever-wet pixels into the four wet regimes.
+    ever_wet = (cube["m_open"] + cube["m_fveg"]) > 0
+    sel_wet = valid & ever_wet
+    Xv = X[sel_wet]
     gmm_map = np.full((rows, cols), -1, dtype=np.int8)
-    if Xv.shape[0] >= 50:
+    gmm_map[valid & ~ever_wet] = 4
+    k_eff = 0
+    if Xv.shape[0] >= 1:
         mu, sd = Xv.mean(0), Xv.std(0)
         sd[sd == 0] = 1
         Z = (Xv - mu) / sd
-        k_eff = min(k, max(1, Xv.shape[0] // 20))
-        labels = fit_gmm(Z, k_eff)
-        crop = (cube["worldcover"][valid] == WC_CROPLAND).astype(float) if "worldcover" in cube else None
+        k_eff = max(1, min(k - 1, Xv.shape[0] // 15))
+        labels = fit_gmm(Z, k_eff) if k_eff > 1 else np.zeros(Xv.shape[0], dtype=int)
+        crop = (cube["worldcover"][sel_wet] == WC_CROPLAND).astype(float) if "worldcover" in cube else None
         mapping = map_clusters_to_regimes(Xv, labels, crop)
-        gmm_map[valid] = np.vectorize(mapping.get)(labels)
+        gmm_map[sel_wet] = np.vectorize(mapping.get)(labels)
         if "worldcover" in cube:  # SRS §5.2 per-pixel sub-label: flooded canopy on cropland -> paddy cycle
             gmm_map[(gmm_map == 2) & (cube["worldcover"] == WC_CROPLAND)] = 3
+    if valid.any():
         cube["gmm"] = gmm_map
         write_png(ov_dir / "gmm_regimes.png", mask_to_rgba(
             [(gmm_map == i, REGIME_COLOURS[i], REGIME_ALPHA[i]) for i in range(5)], (rows, cols)))
         prov["gmm"] = {
-            "k": int(k_eff), "features": ["mean_HH", "min_HH", "max_dHH", "mean_HH-HV", "M_open/N", "M_fveg/N"],
+            "k": int(k_eff) + 1, "k_wet_gmm": int(k_eff),
+            "method": "never-wet pixels = Stable Dry Upland by definition; GMM clusters the ever-wet pixels",
+            "features": ["mean_HH", "min_HH", "max_dHH", "mean_HH-HV", "M_open/N", "M_fveg/N"],
             "random_state": 42,
             "regime_area_km2": {REGIME_NAMES[i]: round(float((gmm_map == i).sum() * px_km2), 2) for i in range(5)},
             "mapping_rule": "wet<15%→Dry Upland; open-dominant & open≥90%→Permanent River; "
@@ -123,7 +133,7 @@ def run(aoi_id: str, store: Path, *, k: int = 5, jrc: str | None = None, dswx: s
         }
         if "gmm_regimes" not in layers:
             layers.append("gmm_regimes")
-        log(f"[03] GMM k={k_eff}: {prov['gmm']['regime_area_km2']}")
+        log(f"[03] regimes (dry by definition + GMM k={k_eff} on wet pixels): {prov['gmm']['regime_area_km2']}")
     else:
         log("[03] too few valid pixels for GMM — skipped")
 

@@ -25,12 +25,33 @@ def test_report_unknown_aoi(client):
     assert body["fallback_active"] is True
 
 
-def test_report_without_cube_degrades_gracefully(client):
-    """Seed AOIs ship no cube — the report still opens with the caveat, flagged not-ready."""
+def test_report_without_cube_degrades_gracefully(client, monkeypatch):
+    """An AOI whose hydroperiod cube is missing still opens the report with the caveat, flagged not-ready."""
+    from app.services import report_builder
+    monkeypatch.setattr(report_builder, "_load_cube", lambda aoi_id: None)
     data = client.get("/api/v1/aois/aoi_assam_majuli/report").json()["data"]
     assert data["data_pack_ready"] is False
     assert "not a confirmed flood" in data["caveat"].lower()
     assert data["hydroperiod"] is None
+
+
+def test_report_for_the_real_majuli_pack_is_grounded(client):
+    """The shipped real-NISAR Majuli pack (3 same-track scenes) produces a complete, honest report."""
+    import pytest
+
+    d = client.get("/api/v1/aois/aoi_assam_majuli/report").json()["data"]
+    assert d["data_pack_ready"] is True
+    assert d["synthetic_test_data"] is False
+    assert d["dates"] == ["2026-07-10", "2026-07-22", "2026-11-07"]
+    assert d["track_frame"] == "040/015"
+    assert len(d["provenance"]["granules"]) == 3
+    per = {p["date"]: p["open_water_km2"] for p in d["classes"]["per_date"]}
+    assert per["2026-07-10"] == pytest.approx(256.1, abs=2.0)    # before the surge
+    assert per["2026-07-22"] == pytest.approx(320.7, abs=2.0)    # peak (1 day after the rain spell)
+    assert per["2026-11-07"] == pytest.approx(103.3, abs=2.0)    # dry reference
+    assert d["hydroperiod"]["wet_every_observation_km2"] == pytest.approx(99.3, abs=2.0)
+    assert d["exposure"]["count"] > 0
+    assert "not a confirmed flood" in d["caveat"].lower()
 
 
 # ---------------------------------------------------------------- grounded numbers

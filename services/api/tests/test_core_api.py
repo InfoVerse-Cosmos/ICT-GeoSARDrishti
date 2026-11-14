@@ -79,10 +79,10 @@ def test_aoi_bounds_are_valid_wgs84_and_about_30km(client, aoi_id):
     assert aoi["layers"], "each AOI must expose at least one thematic layer"
 
 
-def test_assam_aoi_exposes_all_plan_a_layers(client):
+def test_assam_aoi_exposes_the_pipeline_layers(client):
     aoi = next(a for a in client.get("/api/v1/aois").json()["data"]["aois"]
                if a["aoi_id"] == "aoi_assam_majuli")
-    assert {"open_water", "flooded_veg", "hydroperiod", "gmm_regimes", "jrc_anomaly"} <= set(aoi["layers"])
+    assert {"open_water", "flooded_veg", "hydroperiod", "gmm_regimes"} <= set(aoi["layers"])  # jrc_anomaly needs the optional JRC tile
 
 
 # ---------------------------------------------------------------- timeline (§3.2)
