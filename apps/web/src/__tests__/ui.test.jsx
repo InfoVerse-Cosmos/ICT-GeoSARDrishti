@@ -99,6 +99,9 @@ describe("MonsoonTimeSlider", () => {
 
 // ------------------------------------------------------------ top bar
 describe("TopTelemetryBar", () => {
+  // The full telemetry pills + Provenance button belong to Scientist mode.
+  beforeEach(() => useMissionStore.setState({ audienceMode: "scientist" }));
+
   it("offers both AOIs with human-readable names", () => {
     useMissionStore.getState().setAois(AOIS);
     render(<TopTelemetryBar onOpenProvenance={() => {}} />);
@@ -156,6 +159,31 @@ describe("TopTelemetryBar", () => {
   });
 });
 
+// ------------------------------------------------------------ dual-audience
+describe("audience mode (Simple default)", () => {
+  it("defaults to Simple and hides the scientist pills + Provenance button", () => {
+    expect(useMissionStore.getState().audienceMode).toBe("simple");
+    useMissionStore.getState().setTimeline(TIMELINE);
+    render(<TopTelemetryBar onOpenProvenance={() => {}} onOpenReport={() => {}} />);
+    expect(screen.queryByText("GRANULE G_1107")).toBeNull();
+    expect(screen.queryByText("Provenance")).toBeNull();
+  });
+
+  it("Report button calls the handler in Simple mode", () => {
+    let opened = false;
+    render(<TopTelemetryBar onOpenProvenance={() => {}} onOpenReport={() => (opened = true)} />);
+    fireEvent.click(screen.getByText("📊 Report"));
+    expect(opened).toBe(true);
+  });
+
+  it("switching to Scientist swaps the satellite basemap back to dark", () => {
+    useMissionStore.getState().setAudienceMode("simple");
+    expect(useMissionStore.getState().basemap).toBe("satellite");
+    useMissionStore.getState().setAudienceMode("scientist");
+    expect(useMissionStore.getState().basemap).toBe("dark");
+  });
+});
+
 // ------------------------------------------------------------ offline mirror content
 describe("bundled offline mirror (public/fallback_data/manifest.json)", () => {
   it("contains both AOIs with valid bounds", () => {
@@ -192,6 +220,8 @@ describe("time slider playback", () => {
 });
 
 describe("top bar honesty badges", () => {
+  beforeEach(() => useMissionStore.setState({ audienceMode: "scientist" }));
+
   it("shows the fallback plan, single-pol mode and synthetic-data warning", () => {
     useMissionStore.getState().setTimeline([{ date: "2026-10-09", maturity: "PROVISIONAL", polarization: "HH" }],
       { fallback_plan: "C", single_pol_mode: true, synthetic_test_data: true });

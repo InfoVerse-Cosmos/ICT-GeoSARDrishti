@@ -3,6 +3,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { api } from "@/api/client.js";
 import { LAYERS, REGIME_LEGEND, useMissionStore } from "@/store/useMissionStore.js";
+import { SIMPLE_LAYER_IDS, plainLayerLabel } from "@/plain.js";
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 const OVERLAY_OPACITY = 0.85;
@@ -68,13 +69,16 @@ export default function MapWorkspace({ onPixelInspected }) {
 
   const {
     aois, activeAoiId, activeLayer, activeDate, compareDate, compareMix, timeline, showExposure,
-    exposure, clickedPixel, flyTo, connection, basemap,
+    exposure, clickedPixel, flyTo, connection, basemap, audienceMode,
     setActiveLayer, setClickedPixel, setEvidenceCard, setExposure, setCompareDate, setCompareMix, setShowExposure,
     setBasemap,
   } = useMissionStore();
 
+  const simple = audienceMode === "simple";
   const aoi = aois.find((a) => a.aoi_id === activeAoiId);
-  const available = LAYERS.filter((l) => !aoi?.layers || aoi.layers.includes(l.id));
+  const available = LAYERS.filter(
+    (l) => (!aoi?.layers || aoi.layers.includes(l.id)) && (!simple || SIMPLE_LAYER_IDS.includes(l.id)),
+  );
   const layerDef = LAYERS.find((l) => l.id === activeLayer) || LAYERS[0];
   const isRaster = layerDef.id !== "context_layers";
 
@@ -296,8 +300,8 @@ export default function MapWorkspace({ onPixelInspected }) {
             }`}
           >
             <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: l.color }} />
-            {l.label}
-            {!l.dated && <span className="ml-auto text-[9px] text-slate-500">SEASON</span>}
+            {simple ? plainLayerLabel(l.id) : l.label}
+            {!l.dated && !simple && <span className="ml-auto text-[9px] text-slate-500">SEASON</span>}
           </button>
         ))}
         <label className="flex items-center gap-2 border-t border-grid px-2 pt-2 text-slate-300">
@@ -354,13 +358,33 @@ export default function MapWorkspace({ onPixelInspected }) {
         ))}
       </div>
 
-      <Legend layer={activeLayer} />
+      <Legend layer={activeLayer} simple={simple} />
     </div>
   );
 }
 
-function Legend({ layer }) {
+function Legend({ layer, simple }) {
   let body = null;
+  if (simple) {
+    if (layer === "hydroperiod") {
+      body = (
+        <>
+          <div className="h-2 w-40 rounded" style={{ background: "linear-gradient(90deg,#FDE68A,#C2410C)" }} />
+          <div className="flex justify-between text-[10px] text-slate-400"><span>wet once</span><span>wet every pass</span></div>
+          <div className="mt-1">Darker = water seen on more satellite passes.</div>
+        </>
+      );
+    } else if (layer === "flooded_veg") {
+      body = <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-fveg" />Water hidden under plants</div>;
+    } else {
+      body = <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-water" />Open water (seen from space)</div>;
+    }
+    return (
+      <div className="absolute right-3 top-3 max-w-xs space-y-1 rounded border border-grid bg-panel/90 p-2 text-[11px] text-slate-300">
+        {body}
+      </div>
+    );
+  }
   if (layer === "hydroperiod") {
     body = (
       <>

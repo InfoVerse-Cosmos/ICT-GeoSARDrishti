@@ -8,10 +8,15 @@ const AOI_LABELS = {
 };
 
 // Top Mission Bar (SRS §4.2.1): NISAR identity, dual-AOI selector, status pills.
-export default function TopTelemetryBar({ onOpenProvenance }) {
-  const { aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive, timelineMeta } =
-    useMissionStore();
+// Simple mode hides the scientist pills (granule / track-frame / polarization /
+// maturity / plan) and the provenance detail; Scientist mode is unchanged.
+export default function TopTelemetryBar({ onOpenProvenance, onOpenReport }) {
+  const {
+    aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive, timelineMeta,
+    audienceMode, setAudienceMode,
+  } = useMissionStore();
 
+  const simple = audienceMode === "simple";
   const current = timeline.find((t) => t.date === activeDate) || timeline[timeline.length - 1];
   const pol = current?.polarization || timelineMeta.polarization || "HH+HV";
   const singlePol = timelineMeta.single_pol_mode || pol === "HH";
@@ -37,29 +42,68 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
         ))}
       </select>
 
-      <div className="flex flex-1 flex-wrap items-center gap-2 text-[11px] telemetry-mono">
-        <Pill
-          label={current?.granule_id ? `GRANULE ${shortGranule(current.granule_id)}` : "GRANULE —"}
-          title={current?.granule_id}
-        />
-        <Pill label={current?.track_frame ? `T/F ${current.track_frame}` : "T/F —"} />
-        <Pill label={singlePol ? "SINGLE-POL HH" : pol} tone={singlePol ? "isro" : "nasa"} />
-        <Pill
-          label={current?.maturity || "PROVISIONAL"}
-          tone={current?.maturity === "VALIDATED" ? "cyan" : "isro"}
-        />
-        {timelineMeta.fallback_plan && <Pill label={`PLAN ${timelineMeta.fallback_plan}`} title="SRS §3.3 fallback ladder" />}
-        {timelineMeta.synthetic_test_data && <Pill label="SYNTHETIC TEST DATA" tone="alert" />}
-      </div>
+      {simple ? (
+        <div className="flex flex-1 flex-wrap items-center gap-2 text-[11px] telemetry-mono text-slate-400">
+          {timelineMeta.synthetic_test_data && <Pill label="SYNTHETIC TEST DATA" tone="alert" />}
+          <span className="text-slate-500">Satellite radar water view · tap the map to inspect a spot</span>
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-wrap items-center gap-2 text-[11px] telemetry-mono">
+          <Pill
+            label={current?.granule_id ? `GRANULE ${shortGranule(current.granule_id)}` : "GRANULE —"}
+            title={current?.granule_id}
+          />
+          <Pill label={current?.track_frame ? `T/F ${current.track_frame}` : "T/F —"} />
+          <Pill label={singlePol ? "SINGLE-POL HH" : pol} tone={singlePol ? "isro" : "nasa"} />
+          <Pill
+            label={current?.maturity || "PROVISIONAL"}
+            tone={current?.maturity === "VALIDATED" ? "cyan" : "isro"}
+          />
+          {timelineMeta.fallback_plan && <Pill label={`PLAN ${timelineMeta.fallback_plan}`} title="SRS §3.3 fallback ladder" />}
+          {timelineMeta.synthetic_test_data && <Pill label="SYNTHETIC TEST DATA" tone="alert" />}
+        </div>
+      )}
+
+      <AudienceToggle mode={audienceMode} onChange={setAudienceMode} />
+
+      <button
+        onClick={onOpenReport}
+        className="rounded bg-nasa px-2 py-1 text-xs font-semibold text-white hover:bg-nasa/80"
+      >
+        📊 Report
+      </button>
 
       <ConnectionPill connection={connection} fallbackActive={fallbackActive} />
-      <button
-        onClick={onOpenProvenance}
-        className="rounded border border-grid px-2 py-1 text-xs text-slate-300 hover:text-cyan"
-      >
-        Provenance
-      </button>
+      {!simple && (
+        <button
+          onClick={onOpenProvenance}
+          className="rounded border border-grid px-2 py-1 text-xs text-slate-300 hover:text-cyan"
+        >
+          Provenance
+        </button>
+      )}
     </header>
+  );
+}
+
+// Segmented Simple / Scientist audience switch (SRS §4.2 dual-audience).
+function AudienceToggle({ mode, onChange }) {
+  return (
+    <div className="flex items-center rounded border border-grid text-[11px] telemetry-mono" role="group" aria-label="Audience mode">
+      {[
+        ["simple", "Simple"],
+        ["scientist", "Scientist"],
+      ].map(([id, label]) => (
+        <button
+          key={id}
+          onClick={() => onChange(id)}
+          aria-pressed={mode === id}
+          className={`px-2 py-1 ${mode === id ? "bg-cyan/20 text-cyan" : "text-slate-400 hover:text-slate-200"}`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }
 
