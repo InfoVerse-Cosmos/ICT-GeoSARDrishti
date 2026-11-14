@@ -23,7 +23,7 @@ export default function ReportModal({ open, onClose }) {
 
   if (!open) return null;
 
-  const scientist = audienceMode === "scientist";
+  const scientist = audienceMode === "scientific" || audienceMode === "scientist";
   const r = report;
   const hp = r?.hydroperiod;
   const change = r?.change;

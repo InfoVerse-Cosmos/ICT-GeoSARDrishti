@@ -62,11 +62,11 @@ apps/web (Vite + React 18 JS/JSX + MapLibre GL JS + Tailwind)
       │  HTTPS REST JSON + RGBA PNG overlays (CORS)
       ▼
 services/api (Python 3.11 + FastAPI + Uvicorn + Rasterio + NumPy + earthaccess)
-      ├─ Live connectors: NASA Earthdata CMR / ASF, optional LLM narrator (strict timeouts)
-      └─ Local pre-computed AOI packs: COG/RGBA-PNG overlays, time_series_cube.npz, GeoJSON
+      ├─ Live connectors: NASA Earthdata CMR / ASF, optional OpenAI narrator (strict timeouts)
+      └─ AOI packs built locally by `analyze` from your granules: RGBA-PNG overlays, time_series_cube.npz, GeoJSON
 ```
 
-**Two pre-configured AOIs:** Majuli–Kaziranga (Assam, primary) · Kanhan–Pench (Nagpur, regional pilot). A third full pack, Rann of Kutch (Gujarat), renders end-to-end from four real NISAR GCOV granules.
+**Your areas, your data.** The app lists only the areas you analysed from your own NISAR granules (our reference runs: Majuli-Kaziranga, Assam, and Kanhan-Pench, Nagpur). Nothing is pre-loaded or simulated.
 
 **Two audiences, one console.** A top-bar **Simple / Scientist** toggle switches the whole experience:
 
@@ -95,9 +95,7 @@ Full design: [`Docs/geosar_intelligence_srs_and_implementation_blueprint.md`](Do
 
 - **Live app:** _TBD_ (also pinned at the top of this README)
 - **Demo video:** _TBD (optional)_
-- **Screenshots:** stored in `assets/screenshots/` (tracked in-repo)
-
-![GeoSAR Drishti UI overview](assets/screenshots/ui-overview.png)
+- **Screenshots:** _add after your first run (the repo ships none, so everything you see comes from your data)._
 
 ```text
 [ Top mission bar: NISAR · dual-AOI selector · granule/track/pol/maturity pills · LIVE API / LOCAL CACHE ]
@@ -110,72 +108,64 @@ Full design: [`Docs/geosar_intelligence_srs_and_implementation_blueprint.md`](Do
 
 # 5. Installation & Setup Guide
 
-**Prerequisites:** Python 3.11 (SRS target), Node 18+, git.
+**Prerequisites:** Python 3.11+, Node 18+, git. Nothing else to configure.
 
-### Fastest: one command runs both tiers
-```bash
-git clone https://github.com/InfoVerse-Cosmos/ICT-GeoSARDrishti.git
-cd ICT-GeoSARDrishti
+## ⚡ Quick start: one file does everything
 
-# macOS / Linux
-./run.sh            # or: npm run dev
-# Windows
-run.bat
-```
-Either script installs deps on first run, starts FastAPI (:8000) + Vite (:5173), wires the
-frontend to the backend, and opens both. Skip installs on a fast restart with
-`./run.sh --no-install` (or `run.bat --no-install`).
+This repo ships **no data and no pre-built results**. You bring your own NISAR granules; the app is built from them on your machine.
 
-- API → http://localhost:8000/docs
-- UI → http://localhost:5173
+1. **Get the data.** Download NISAR **L2 GCOV** `.h5` files for your area and monsoon window (your responsibility; both sources give the same product):
+   - NASA Earthdata / ASF: <https://search.earthdata.nasa.gov/> (collections `NISAR_L2_GCOV_PROVISIONAL_V1`, `NISAR_L2_GCOV_V1`)
+   - ISRO Bhoonidhi: <https://bhoonidhi.nrsc.gov.in/>
+2. **Drop the `.h5` files into the `DATA/` folder.** (Files are ~7 GB each and never committed. Short on disk? Keep them anywhere and set `GEOSAR_DATA_DIR=D:/my/folder` in `services/api/.env`.)
+3. **Run ONE file:**
 
-On macOS/Linux `run.sh` runs both in one terminal (Ctrl-C stops both); on Windows `run.bat`
-opens two windows (close them to stop). The backend boots in deterministic local-cache mode
-with **no** token required.
+   ```bash
+   analyze.bat        # Windows
+   ./analyze.sh       # macOS / Linux
+   ```
+4. **Open <http://localhost:5173>.** Pick your area at the top-left, or tap **📊 Report**.
 
-### Or run each tier manually
+`analyze` installs everything on first run, auto-detects every area in your folder (one area per satellite track/frame, so several incidents in one folder are fine), builds the analysis, and starts the app. Expect roughly 10-15 minutes for a few 7 GB granules (the OpenStreetMap road download is the slow part).
+
+**Next time** (data already analysed) just start the app, no reprocessing: `run.bat` / `./run.sh`.
+Add more granules later: copy them into `DATA/` and run `analyze` again; the new area appears automatically.
+
+Nothing in `DATA/` yet? The app still opens and shows a "No NISAR data analysed yet" screen with these same steps. It never shows pre-loaded or simulated areas.
+
+## Settings (optional): `services/api/.env`
+
+Created automatically from `.env.example` on first run. Everything is optional.
+
+| Key | What it does |
+| :-- | :-- |
+| `LLM_API_KEY` | OpenAI key for the optional plain-language wording on the Evidence Card (uses `gpt-4o-mini`, cheap). Blank = the built-in physics template is used. |
+| `GEOSAR_DATA_DIR` | Where your `.h5` granules are (default `./DATA`). |
+| `GEOSAR_DATA_STORE` | Where analysed results are written (default `services/api/data_store`). |
+| `EARTHDATA_TOKEN` | Enables the live NASA CMR check button (optional). |
+
+**Evidence Card, honest by design.** The card first appears instantly from a deterministic physics template. If an OpenAI key is set, the AI re-words it a few seconds later; any number the AI writes that is not in the computed card is rejected, and the card says which engine wrote it. If the AI is unavailable (no key, no internet, rate limit) the built-in template stays: same numbers, nothing breaks.
+
+## Run each tier manually (developers)
 ```bash
 # Backend (FastAPI)
 cd services/api
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp ../../.env.example .env          # optionally set EARTHDATA_TOKEN / LLM_API_KEY
 uvicorn app.main:app --reload --port 8000
 
-# Frontend (Vite + React) — new terminal
-cd apps/web
-npm install
+# Frontend (Vite + React), new terminal
+cd apps/web && npm install
 echo "VITE_API_BASE_URL=http://localhost:8000" > .env
 npm run dev
 ```
+Tests: `cd services/api && python -m pytest tests -q` · `cd apps/web && npx vitest run` · `python -m pytest scripts/tests -q` (use the `scripts/.venv` created by `analyze`).
 
-**Deploy.** API: `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}` on Render/Railway/Cloud Run (set `EARTHDATA_TOKEN`, `CORS_ORIGINS`, optional `LLM_API_KEY`). Web: build `apps/web` (`npm run build`, output `dist`) on GitHub Pages / Vercel / Netlify with `VITE_API_BASE_URL` pointed at the API.
+**Advanced build options:** `python scripts/byod_build_aoi.py --help` (custom id/name/bbox, WorldCover, DEM, JRC, OPERA DSWx, local OSM file).
 
-### Bring your own data (analyse your own NISAR area)
+**Deploy.** API: `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}` (set `CORS_ORIGINS`, optional `LLM_API_KEY`, `EARTHDATA_TOKEN`). Because results are generated, not shipped, run `analyze` on the server (or mount a volume at `GEOSAR_DATA_STORE`) so it has packs to serve. Web: `npm run build` in `apps/web`, host `dist` anywhere, with `VITE_API_BASE_URL` pointing at the API.
 
-The project is open source: clone it (or download the ZIP and extract it) and analyse **your own area** from **your own** NISAR L2 GCOV granules — no bounding box, config, or code editing needed. The one command wraps the same pipeline (`scripts/geosar_pipeline`) that produced the shipped packs.
-
-**1. Get NISAR L2 GCOV granules** for your area and monsoon window (it is your responsibility to obtain the data). Download the `.h5` files from either source — both distribute the same NISAR GCOV product:
-- **NASA Earthdata / ASF** — <https://search.earthdata.nasa.gov/> (collections `NISAR_L2_GCOV_PROVISIONAL_V1`, `NISAR_L2_GCOV_V1`)
-- **ISRO Bhoonidhi** — <https://bhoonidhi.nrsc.gov.in/>
-
-**2. Drop the `.h5` files into the `DATA/` folder** at the repo root (see [`DATA/README.md`](DATA/README.md)). No unzip or rename needed. They are large and stay only on your machine — git never commits them.
-
-**3. Run one command** from the repo root:
-```bash
-./analyze.sh        # macOS / Linux
-analyze.bat         # Windows
-```
-It auto-detects the area from your granules' footprints, builds the analysis pack, and starts the app. On first run it also creates a small processing environment and installs the dependencies.
-
-**4. Open <http://localhost:5173>** and pick your area in the top-bar selector. Open the **📊 Analysis Report** for a plain-language summary, or flip to **Scientist** mode for the full console.
-
-> **Under the hood (two folders):** you drop raw granules into `DATA/` (input); the command processes them into a small pack under `services/api/data_store/<aoi-id>/` (`manifest.json`, `time_series_cube.npz`, `overlays/*.png`) which the app auto-loads on startup. You never edit anything inside `services/`.
->
-> **Advanced / manual:** call the builder directly for custom ids, areas, or extra layers —
-> `python scripts/byod_build_aoi.py --aoi-id aoi_my_delta --name "My Delta" --bbox w,s,e,n --h5-dir /path --with-regimes --osm-file my_area.geojson` (see `--help`). Requires `pip install -r scripts/requirements.txt`.
->
-> **Honest framing applies to every pack:** results are a radar-derived surface/canopy-water indication for field inspection — not a confirmed flood, depth, or damage claim. Hydroperiod is reported as *M of N valid NISAR observations*, never "days flooded".
+> **Honest framing applies to every result:** a radar-derived surface/canopy-water indication for field inspection, not a confirmed flood, depth, or damage claim. Hydroperiod is *M of N valid NISAR observations*, never "days flooded".
 
 ---
 
@@ -187,7 +177,7 @@ Our team (**Cosmos InfoVerse Techky**) used generative AI tools strictly as huma
 | :-- | :-- | :-- |
 | Claude / Kiro, Gemini, GitHub Copilot | SRS/doc refinement; monorepo scaffold; FastAPI boilerplate (routers, response envelope, exception handlers); React component skeletons; config files | All SAR backscatter math, Otsu thresholds, ΔHH double-bounce logic, hydroperiod and area metrics, GMM regime mapping, validation, data-gate processing, integration, testing, and scientific review — authored and verified by the team |
 
-- **In-app ML & narration:** `scikit-learn` Gaussian Mixture Models for unsupervised SAR time-series clustering; an **optional** template-grounded LLM endpoint (with a 100% deterministic fallback) that only reformats already-computed pixel numbers into plain-language Evidence Cards. No AI invents numbers.
+- **In-app ML & narration:** `scikit-learn` Gaussian Mixture Models for unsupervised SAR time-series clustering; an **optional** OpenAI model (`gpt-4o-mini`) that only re-words already-computed pixel numbers into plain-language Evidence Cards, guarded by a number-grounding check and a 100% deterministic built-in fallback. No AI invents numbers.
 - **Zero AI commit authorship:** AI tools **never** appear as git authors, co-authors, or repository contributors. Every commit is authored and pushed by a registered human team member from their own GitHub account (Handbook Sections 4 & 5).
 
 ---

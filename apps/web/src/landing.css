@@ -1,0 +1,236 @@
+/* NASA Horizon reference: Inter display, Public Sans body, DM Mono labels.
+   Theme variables and component rules are scoped to the landing page. */
+.landing {
+  --ink: 17 17 17; --panel: 27 27 27; --fg: 248 248 248; --muted: 181 181 187; --line: 255 255 255;
+  background: rgb(var(--ink)); color: rgb(var(--fg)); color-scheme: dark;
+  font: 16px/1.65 'Landing Public Sans', Arial, sans-serif; min-height: 100%;
+}
+.landing.light {
+  --ink: 255 255 255; --panel: 246 246 246; --fg: 20 20 20; --muted: 79 79 84; --line: 0 0 0; color-scheme: light;
+}
+.landing *, .landing *::before, .landing *::after { box-sizing: border-box; }
+.landing h1, .landing h2, .landing h3, .landing h4, .landing button, .landing .btn, .landing strong, .landing .editorial-link { font-family: 'Landing Inter', Arial, sans-serif; }
+.landing h1, .landing h2, .landing h3, .landing h4 { line-height: 1.12; letter-spacing: -.035em; }
+.landing h2 { font-size: clamp(2rem, 3.4vw, 3.15rem); font-weight: 700; }
+.landing a { text-underline-offset: 5px; }
+.landing button, .landing a, .landing select, .landing summary { -webkit-tap-highlight-color: transparent; }
+.landing :focus-visible { outline: 3px solid #2491ff; outline-offset: 5px; }
+.landing section[id], .landing main[id] { scroll-margin-top: 145px; }
+.landing .page-container { width: min(100% - 96px, 1400px); margin-inline: auto; }
+.landing .section-kicker { display: block; font: .7rem/1.5 'Landing DM Mono', monospace; letter-spacing: .13em; margin-bottom: 14px; color: rgb(var(--muted)); }
+.landing .arrow-disc { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 25px; height: 25px; border-radius: 50%; background: #f64137; color: #fff; font: 700 18px/1 Arial, sans-serif; vertical-align: middle; transition: transform .2s; }
+.landing a:hover .arrow-disc { transform: rotate(45deg); }
+.landing .btn { display: inline-flex; gap: 20px; align-items: center; justify-content: center; padding: 13px 21px; background: #d83933; color: white; border: 0; border-radius: 2px; min-height: 48px; font-weight: 700; font-size: 1rem; line-height: 1.4; transition: background .2s; }
+.landing .btn:hover { background: #b52622; }
+.landing .btn .arrow-disc { background: white; color: #c3312c; width: 22px; height: 22px; font-size: 16px; }
+.landing .editorial-link { display: inline-flex; align-items: center; gap: 14px; font-size: .95rem; font-weight: 700; line-height: 1.4; }
+.landing .editorial-link:hover { text-decoration: underline; }
+.landing .landing-skip { position: fixed; top: -100px; left: 15px; z-index: 100; background: #fff; color: #111; padding: 12px 20px; }
+.landing .landing-skip:focus { top: 12px; }
+
+/* Black masthead and secondary topic navigation. */
+.landing .agency-header { position: sticky; top: 0; z-index: 50; background: #050505; color: white; }
+.landing .agency-nav { max-width: 1600px; margin: auto; height: 96px; padding: 0 40px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; }
+.landing .explore-navigation { display: flex; align-items: center; gap: 25px; }
+.landing .explore-trigger { display: flex; align-items: center; gap: 18px; min-height: 44px; font-size: 1.05rem; font-weight: 700; }
+.landing .explore-trigger span { border: 1px solid #737373; width: 20px; height: 20px; display: grid; place-items: center; font: 16px/1 Arial, sans-serif; }
+.landing .nav-project-label { font: .6rem/1.5 'Landing DM Mono', monospace; color: #a4a4a7; letter-spacing: .08em; }
+.landing .agency-wordmark { display: flex; align-items: center; gap: 12px; font: 700 1.3rem/1.2 'Landing Inter', Arial, sans-serif; letter-spacing: -.03em; }
+.landing .wordmark-subtitle { display: block; font: .62rem/1.8 'Landing DM Mono', monospace; letter-spacing: .35em; }
+.landing .orbit-mark { display: grid; place-items: center; position: relative; width: 47px; height: 47px; background: #0b3d91; border-radius: 50%; font: 800 25px 'Landing Inter', sans-serif; }
+.landing .orbit-mark span { position: absolute; inset: 14px -6px; border: 1px solid #fff; border-radius: 50%; transform: rotate(-35deg); }
+.landing .orbit-mark::after { content: ''; position: absolute; width: 56px; height: 2px; background: #f64137; transform: rotate(-39deg); }
+.landing .agency-nav-actions { display: flex; justify-content: flex-end; align-items: center; gap: 22px; font: 700 .85rem 'Landing Inter', sans-serif; }
+.landing .agency-nav-actions button { color: #ddd; border-color: #555; min-width: 38px; min-height: 44px; }
+.landing .nav-launch { white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; }
+.landing .topic-nav { display: flex; align-items: center; gap: 30px; padding: 11px 40px; border-top: 1px solid #333; overflow-x: auto; font-size: .75rem; white-space: nowrap; }
+.landing .topic-nav a { flex-shrink: 0; }
+.landing .topic-nav a:hover { text-decoration: underline; }
+.landing .topic-nav > span { margin-left: auto; color: #9d9d9d; font: .57rem 'Landing DM Mono', monospace; letter-spacing: .05em; }
+.landing .explore-dropdown { position: absolute; top: 96px; left: 0; width: min(540px, 100%); padding: 32px 40px; background: #101010; box-shadow: 0 18px 35px #0006; border-top: 1px solid #555; }
+.landing .explore-dropdown .section-kicker { color: #aaa; }
+.landing .explore-dropdown a { display: block; padding: 17px 0; border-bottom: 1px solid #444; }
+.landing .explore-dropdown strong { display: flex; justify-content: space-between; font-size: 1.2rem; }
+.landing .explore-dropdown small { display: block; color: #b6b6b6; margin-top: 6px; font-size: .8rem; }
+.landing .explore-dropdown a:hover strong { text-decoration: underline; }
+
+/* Full-bleed image hero, with contrast independent of the selected theme. */
+.landing .earth-hero { position: relative; isolation: isolate; background: radial-gradient(ellipse at 75% 40%, #181818 0%, #080808 38%, #000 75%); color: #fff; overflow: hidden; min-height: 720px; display: flex; flex-direction: column; justify-content: flex-end; }
+.landing .earth-globe { position: absolute; z-index: -3; right: 3%; top: 43%; width: min(48vw, 620px, 70svh); aspect-ratio: 1; transform: translateY(-50%); pointer-events: none; }
+.landing .earth-globe canvas, .landing .earth-fallback { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; border-radius: 50%; -webkit-mask-image: radial-gradient(circle closest-side, #000 94%, transparent 100%); mask-image: radial-gradient(circle closest-side, #000 94%, transparent 100%); }
+.landing .earth-globe canvas { opacity: 0; transition: opacity 1.2s; }
+.landing .earth-fallback { object-fit: cover; mix-blend-mode: screen; transition: opacity 1.2s; }
+.landing .earth-globe.is-ready canvas { opacity: 1; }
+.landing .earth-globe.is-ready .earth-fallback { opacity: 0; }
+.landing .earth-globe { isolation: isolate; }
+.landing .earth-globe canvas, .landing .earth-fallback { z-index: 0; }
+.landing .earth-orbit { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: -1; fill: none; stroke: #b2cbe2; stroke-width: .14; stroke-dasharray: .7 1.2; opacity: .45; }
+.landing .earth-satellite { position: absolute; left: 86%; top: 14%; width: clamp(32px, 3.7vw, 48px); height: auto; overflow: visible; transform: translate(-50%, -50%); filter: drop-shadow(0 2px 4px #0008); }
+.landing .satellite-panels { fill: #244e78; stroke: #a4c8ed; stroke-width: 1; }
+.landing .satellite-cells { fill: none; stroke: #a4c8ed; stroke-width: .6; }
+.landing .satellite-body { fill: #d9dedf; stroke: #8b969e; stroke-width: 1; }
+.landing .satellite-dish { fill: #dec594; stroke: #f2dcab; stroke-width: 1; }
+.landing .satellite-antenna { fill: none; stroke: #e3e8ec; stroke-width: 1; }
+.landing .hero-shade { position: absolute; inset: 0; z-index: -2; background: linear-gradient(90deg, #000e 0%, #0009 35%, #0001 78%), linear-gradient(0deg, #000 0%, transparent 40%); }
+.landing .hero-content { padding-block: 90px 80px; }
+.landing .hero-content .section-kicker { color: #ddd; }
+.landing .hero-content h1 { font-size: clamp(3rem, 5.3vw, 5.3rem); font-weight: 800; letter-spacing: -.045em; max-width: 850px; line-height: 1.03; }
+.landing .hero-content p { max-width: 480px; color: #ededed; margin-block: 26px; font-size: 1.05rem; line-height: 1.7; }
+.landing .hero-secondary { display: inline-flex; gap: 20px; align-items: center; font: 700 .9rem 'Landing Inter', sans-serif; margin-left: 24px; min-height: 48px; }
+.landing .hero-secondary:hover { text-decoration: underline; }
+.landing .hero-topics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; padding-bottom: 40px; }
+.landing .hero-topics a { border-top: 1px solid #8d8d8d; padding-top: 20px; }
+.landing .hero-topics .section-kicker { color: #b3b3b3; font-size: .6rem; margin-bottom: 9px; }
+.landing .hero-topics strong { display: flex; gap: 15px; align-items: center; justify-content: space-between; font-size: .95rem; line-height: 1.4; }
+.landing .hero-credit { display: block; align-self: flex-end; font: .55rem/1.5 'Landing DM Mono', monospace; color: #bbb; padding: 0 28px 15px; }
+
+/* Editorial feature stories and image gallery. */
+.landing .featured-section { padding-block: 80px 35px; }
+.landing .editorial-heading { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 24px; margin-bottom: 32px; }
+.landing .feature-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
+.landing .feature-story { display: flex; align-items: flex-end; min-height: 350px; position: relative; overflow: hidden; isolation: isolate; color: white; background: #0c1726; }
+.landing .feature-story::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #000e, #0003 100%); }
+.landing .feature-story > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: transform .4s; }
+.landing .feature-story:hover > img { transform: scale(1.04); }
+.landing .feature-story > div { padding: 27px; width: 100%; }
+.landing .feature-story .section-kicker { color: #e2e2e2; font-size: .59rem; }
+.landing .feature-story h3 { font-size: clamp(1.25rem, 1.7vw, 1.8rem); margin-bottom: 18px; }
+.landing .feature-story-main h3 { font-size: clamp(1.7rem, 2.6vw, 2.6rem); }
+.landing .feature-story p { max-width: 400px; font-size: .9rem; line-height: 1.5; margin-bottom: 20px; }
+.landing .radar-section { padding-block: 80px; background: rgb(var(--panel)); }
+.landing .section-intro { max-width: 710px; color: rgb(var(--muted)); margin: -10px 0 35px; }
+.landing .radar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.landing .radar-image { position: relative; background: #101827; aspect-ratio: 4/3; overflow: hidden; }
+.landing .radar-image img { width: 100%; height: 100%; object-fit: contain; }
+.landing .radar-image .section-kicker { position: absolute; left: 15px; top: 15px; background: #000d; color: white; padding: 7px 10px; font-size: .62rem; }
+.landing .radar-grid figcaption { padding-top: 20px; }
+.landing .radar-grid h3 { font-size: 1.2rem; letter-spacing: -.02em; }
+.landing .radar-grid p { font-size: .875rem; color: rgb(var(--muted)); margin-top: 8px; }
+.landing .data-caption { margin-top: 30px; border-top: 1px solid rgb(var(--line) / .15); padding-top: 18px; font-size: .75rem; color: rgb(var(--muted)); }
+
+/* Audience selection retains the real workspace mode and study-area controls. */
+.landing .mission-guide, .landing #field-guide { max-width: 1400px; width: calc(100% - 96px); padding: 65px 0 80px; }
+.landing .mission-guide h2, .landing #field-guide h2 { font-size: clamp(2rem, 3.4vw, 3.15rem); }
+.landing .audience-switch { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid rgb(var(--line) / .25); }
+.landing .audience-switch button { min-height: 48px; padding: 13px 17px; font-size: .8rem; font-weight: 700; border-bottom: 3px solid transparent; }
+.landing .audience-switch button[aria-pressed=true] { border-bottom-color: #d83933; background: rgb(var(--line) / .05); }
+.landing .guide-console { display: grid; grid-template-columns: 1fr 1fr; background: rgb(var(--panel)); }
+.landing .guide-copy { padding: 40px; }
+.landing .guide-copy h3 { font-size: 1.8rem; }
+.landing .guide-copy select { display: block; width: 100%; background: rgb(var(--ink)); color: rgb(var(--fg)); border: 1px solid rgb(var(--line) / .4); border-radius: 0; min-height: 48px; padding: 12px; font-size: .9rem; }
+.landing .guide-steps { padding: 16px 40px; border-left: 1px solid rgb(var(--line) / .14); }
+.landing .guide-steps li { display: flex; gap: 22px; padding: 22px 0; }
+.landing .guide-steps li + li { border-top: 1px solid rgb(var(--line) / .15); }
+.landing .step-number { font: 1.1rem 'Landing DM Mono', monospace; color: rgb(var(--muted)); padding-top: 2px; }
+.landing .reading-key { display: flex; align-items: center; flex-wrap: wrap; gap: 15px 25px; padding: 22px 0 0; font-size: .75rem; color: rgb(var(--muted)); }
+.landing .reading-key strong { color: rgb(var(--fg)); }
+.landing .reading-key span { display: inline-flex; align-items: center; gap: 8px; }
+.landing .reading-key i { width: 11px; height: 11px; border-radius: 50%; }
+.landing .reading-key a { text-decoration: underline; }
+
+.landing .science-feature { background: #080808; color: white; padding-block: 90px; }
+.landing .science-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; }
+.landing .science-feature .section-kicker { color: #b3b3b3; }
+.landing .science-layout h2 { font-size: clamp(2.5rem, 4.5vw, 4.5rem); }
+.landing .science-layout p { color: #bfbfbf; margin-block: 25px; max-width: 560px; }
+.landing .science-facts article { border-top: 1px solid #606060; padding: 24px 0 10px; }
+.landing .science-facts h3 { font-size: 1.4rem; }
+.landing .science-facts p { font-size: .9rem; margin-block: 12px 20px; }
+.landing .field-questions { border-top: 1px solid rgb(var(--line) / .25); }
+.landing .field-questions details { border-bottom: 1px solid rgb(var(--line) / .25); }
+.landing .field-questions summary { cursor: pointer; padding: 23px 0; font-family: 'Landing Inter', sans-serif; font-weight: 700; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.landing .field-questions summary::-webkit-details-marker { display: none; }
+.landing .field-questions summary span { font-size: 1.4rem; color: #d83933; }
+.landing .field-questions details[open] summary span { transform: rotate(45deg); }
+.landing .field-questions p { max-width: 850px; color: rgb(var(--muted)); padding-bottom: 24px; }
+
+.landing .team-section { padding-block: 15px 80px; }
+.landing .team-event { font-size: .8rem; color: rgb(var(--muted)); }
+.landing .team-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 45px; align-items: stretch; }
+.landing .team-layout > img { width: 100%; height: 100%; max-height: 450px; object-fit: cover; }
+.landing .team-roster { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.landing .team-roster article { display: flex; align-items: center; gap: 14px; border-bottom: 1px solid rgb(var(--line) / .15); padding-bottom: 20px; }
+.landing .member-initials { font: .9rem 'Landing DM Mono', monospace; width: 44px; height: 44px; display: grid; place-items: center; flex-shrink: 0; background: rgb(var(--panel)); }
+.landing .team-roster h3 { font-size: .9rem; letter-spacing: -.02em; }
+.landing .team-roster p { font-size: .7rem; margin-top: 8px; color: rgb(var(--muted)); }
+.landing .closing-feature { background: linear-gradient(90deg, #000 10%, #0006), url('/images/earth-eastern-hemisphere.jpg') right 48% / auto 150% no-repeat #000; color: white; padding: 100px 0; }
+.landing .closing-feature h2 { font-size: clamp(2.8rem, 5vw, 5rem); }
+.landing .closing-feature .section-kicker { color: #bbb; }
+.landing .closing-feature p { max-width: 400px; color: #ddd; margin-block: 22px 28px; }
+
+.landing .agency-footer { background: #050505; color: white; padding-block: 75px 35px; }
+.landing .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 80px; }
+.landing .footer-wordmark { display: block; font: 700 1.4rem 'Landing Inter', sans-serif; margin-bottom: 30px; }
+.landing .footer-intro h2 { font-size: 1.6rem; letter-spacing: -.025em; }
+.landing .footer-intro p { color: #aaa; max-width: 430px; font-size: .85rem; margin-block: 20px; }
+.landing .footer-grid h3 { font-size: .9rem; margin-bottom: 25px; }
+.landing .footer-grid > div:not(.footer-intro) a { display: block; color: #ccc; margin-bottom: 15px; font-size: .85rem; }
+.landing .footer-grid a:hover { text-decoration: underline; }
+.landing .footer-fineprint { border-top: 1px solid #444; margin-top: 45px; padding-top: 25px; color: #aaa; font-size: .7rem; }
+.landing .footer-fineprint p + p { margin-top: 14px; }
+.landing .footer-fineprint a { text-decoration: underline; margin-left: 5px; }
+
+@media (min-width: 1700px) { .landing .earth-hero { min-height: 820px; } }
+@media (max-width: 1100px) {
+  .landing .nav-project-label, .landing .nav-science, .landing .topic-nav > span { display: none; }
+  .landing .hero-content { padding-block: 90px 70px; }
+  .landing .earth-globe { right: 2%; width: min(54vw, 560px, 65svh); }
+  .landing .feature-grid { grid-template-columns: 1.4fr 1fr 1fr; }
+  .landing .feature-story > div { padding: 20px; }
+  .landing .science-layout { gap: 50px; }
+  .landing .team-layout { grid-template-columns: 1fr; }
+  .landing .team-layout > img { max-height: 300px; }
+  .landing .team-roster { grid-template-columns: repeat(3, 1fr); }
+  .landing .footer-grid { gap: 40px; }
+}
+@media (max-width: 760px) {
+  .landing .page-container, .landing .mission-guide, .landing #field-guide { width: calc(100% - 40px); }
+  .landing .agency-nav { height: 82px; padding: 0 20px; gap: 12px; }
+  .landing .agency-wordmark { font-size: 1rem; gap: 8px; }
+  .landing .orbit-mark { width: 35px; height: 35px; font-size: 20px; }
+  .landing .orbit-mark::after { width: 40px; }
+  .landing .orbit-mark span { inset: 10px -3px; }
+  .landing .wordmark-subtitle { font-size: .5rem; }
+  .landing .agency-nav-actions { gap: 8px; }
+  .landing .nav-launch { font-size: 0; gap: 0; }
+  .landing .nav-launch .arrow-disc { font-size: 18px; }
+  .landing .explore-trigger { gap: 8px; font-size: .85rem; }
+  .landing .explore-trigger span { width: 17px; height: 17px; }
+  .landing .topic-nav { padding-inline: 20px; gap: 24px; font-size: .7rem; }
+  .landing .explore-dropdown { top: 82px; padding: 24px; }
+  .landing .earth-hero { min-height: 770px; }
+  .landing .earth-globe { width: min(78vw, 420px, 52svh); right: 3%; top: 30%; opacity: .85; }
+  .landing .hero-shade { background: linear-gradient(90deg, #0008, #0004), linear-gradient(0deg, #000 15%, #0007 60%, transparent); }
+  .landing .hero-content { padding-block: 110px 45px; }
+  .landing .hero-content h1 { font-size: clamp(2.6rem, 7.6vw, 3.6rem); }
+  .landing .hero-content p { max-width: 420px; font-size: .95rem; }
+  .landing .hero-secondary { display: flex; margin: 16px 0 0; }
+  .landing .hero-topics { gap: 14px; padding-bottom: 25px; }
+  .landing .hero-topics strong { font-size: .72rem; align-items: flex-start; }
+  .landing .hero-topics .section-kicker { font-size: .5rem; letter-spacing: .03em; }
+  .landing .hero-topics .arrow-disc { display: none; }
+  .landing .hero-credit { font-size: .45rem; padding-inline: 20px; }
+  .landing .featured-section, .landing .radar-section { padding-block: 55px; }
+  .landing .feature-grid { grid-template-columns: 1fr 1fr; }
+  .landing .feature-story-main { grid-column: 1 / -1; }
+  .landing .feature-story { min-height: 290px; }
+  .landing .feature-story-main h3 { font-size: 2rem; }
+  .landing .feature-story h3 { font-size: 1.15rem; }
+  .landing .feature-story-main h3 { font-size: 2rem; }
+  .landing .mission-guide, .landing #field-guide { padding-block: 35px 55px; }
+  .landing .guide-console { grid-template-columns: 1fr; }
+  .landing .guide-copy { padding: 25px; }
+  .landing .guide-steps { border-left: 0; border-top: 1px solid rgb(var(--line) / .15); padding: 0 25px; }
+  .landing .audience-switch { width: 100%; }
+  .landing .audience-switch button { flex: 1; padding-inline: 8px; }
+  .landing .radar-grid { grid-template-columns: 1fr; gap: 30px; }
+  .landing .science-feature { padding-block: 60px; }
+  .landing .science-layout { grid-template-columns: 1fr; gap: 40px; }
+  .landing .team-roster { grid-template-columns: 1fr 1fr; gap: 16px; }
+  .landing .member-initials { display: none; }
+  .landing .team-section { padding-bottom: 55px; }
+  .landing .closing-feature { padding-block: 65px; }
+  .landing .footer-grid { grid-template-columns: 1fr 1fr; gap: 40px 25px; }
+  .landing .footer-intro { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { .landing *, .landing *::before, .landing *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }

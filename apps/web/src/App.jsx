@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, loadFallbackManifest } from "@/api/client.js";
 import { useMissionStore } from "@/store/useMissionStore.js";
 import TopTelemetryBar from "@/components/TopTelemetryBar.jsx";
@@ -12,7 +12,11 @@ import ScenePanel from "@/components/ScenePanel.jsx";
 import ReportModal from "@/components/ReportModal.jsx";
 import SimplePanel from "@/components/SimplePanel.jsx";
 
+import ErrorBoundary from "@/components/ErrorBoundary.jsx";
+import SimpleSummary from "@/components/SimpleSummary.jsx";
+
 const RETRY_MS = 5000;
+const LandingLayout = lazy(() => import("@/components/landing/LandingLayout.jsx"));
 
 function metaFrom(src) {
   if (!src) return {};
@@ -45,10 +49,13 @@ function NoDataState() {
   );
 }
 
-export default function App() {
-  const { aois, activeAoiId, connection, audienceMode, setAois, setTimeline, setConnection, setFallbackActive } =
-    useMissionStore();
-  const simple = audienceMode === "simple";
+function MissionApp() {
+  const [workspaceTheme] = useState(() => {
+    try { return localStorage.getItem("geosar-landing-theme") === "dark" ? "dark" : "light"; }
+    catch { return "light"; }
+  });
+  const { aois, audienceMode, activeAoiId, connection, setAois, setTimeline, setConnection, setFallbackActive } = useMissionStore();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
   const [provenanceOpen, setProvenanceOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -59,10 +66,10 @@ export default function App() {
   // banner, serve the bundled offline mirror, and keep retrying (SRS §7.2 rule 3).
   const boot = useCallback(async () => {
     const health = await api.health();
-    if (health.status === "unavailable") {
+    if (health.status === "unavailable" || health.source_mode === "CLIENT_FALLBACK") {
       if (!offlineMirror.current) offlineMirror.current = await loadFallbackManifest();
+      setConnection("OFFLINE");
       if (offlineMirror.current) {
-        setConnection("OFFLINE");
         setAois(offlineMirror.current.aois || []);
       }
       setUplink((u) => ({ establishing: true, attempt: u.attempt + 1 }));
@@ -107,11 +114,8 @@ export default function App() {
   }, [activeAoiId, connection, setTimeline]);
 
   return (
-    <div className="flex h-full flex-col bg-orbital text-slate-200">
-      <TopTelemetryBar
-        onOpenProvenance={() => setProvenanceOpen(true)}
-        onOpenReport={() => setReportOpen(true)}
-      />
+    <div data-theme={workspaceTheme} className="mission-workspace flex min-h-full lg:h-full flex-col bg-orbital text-slate-200">
+      <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} onOpenReport={() => setReportOpen(true)} />
       {uplink.establishing && (
         <div
           role="status"
@@ -130,58 +134,72 @@ export default function App() {
       {aois.length === 0 && !uplink.establishing ? (
         <NoDataState />
       ) : (
-      <div className="flex min-h-0 flex-1">
+      <>
+      {audienceMode === "simple" && <SimpleSummary compact />}
+      <button className="border-b border-grid px-4 py-2 text-left text-sm lg:hidden" aria-expanded={drawerOpen} aria-controls="mission-drawer" onClick={() => setDrawerOpen(!drawerOpen)}>{drawerOpen ? "Close details" : "Open details"}</button>
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Center: map + time slider */}
         <main className="flex min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1">
-            <MapWorkspace onPixelInspected={() => setTab("trajectory")} />
+          <div className="min-h-[420px] flex-1 lg:min-h-0">
+            <MapWorkspace onPixelInspected={() => { setTab("trajectory"); setDrawerOpen(true); }} />
           </div>
           <MonsoonTimeSlider />
         </main>
 
-        {/* Right drawer: Simple panel for laymen, full Scientist tabs otherwise */}
-        <aside className="flex w-[400px] flex-col border-l border-grid bg-panel">
-          {simple ? (
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              <SimplePanel onOpenReport={() => setReportOpen(true)} />
-            </div>
-          ) : (
-            <>
-              <nav className="flex border-b border-grid text-xs telemetry-mono">
-                {[
-                  ["metrics", "SCENE & VALIDATION"],
-                  ["trajectory", "PIXEL TRAJECTORY"],
-                  ["exposure", "INSPECTION LOG"],
-                ].map(([id, label]) => (
-                  <button
-                    key={id}
-                    onClick={() => setTab(id)}
-                    className={`flex-1 px-3 py-2 ${
-                      tab === id ? "bg-nasa/30 text-cyan" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                {tab === "metrics" && <ScenePanel />}
-                {tab === "trajectory" && (
-                  <>
-                    <PixelTrajectoryChart />
-                    <EvidenceCardPanel />
-                  </>
-                )}
-                {tab === "exposure" && <ExposureTable />}
-              </div>
-            </>
-          )}
+        {/* Right telemetry & evidence drawer */}
+        <aside id="mission-drawer" className={`${drawerOpen ? "flex" : "hidden"} max-h-[65vh] w-full shrink-0 flex-col border-t border-grid bg-panel lg:flex lg:max-h-none lg:w-[360px] lg:border-l lg:border-t-0 xl:w-[420px]`}>
+          {audienceMode === "scientific" && <nav className="flex border-b border-grid text-xs telemetry-mono">
+            {[
+              ["metrics", "SCENE & VALIDATION"],
+              ["trajectory", "PIXEL TRAJECTORY"],
+              ["exposure", "INSPECTION LOG"],
+            ].map(([id, label]) => (
+              <button
+                aria-pressed={tab === id}
+                key={id}
+                onClick={() => setTab(id)}
+                className={`flex-1 px-3 py-2 ${
+                  tab === id ? "border-b-2 border-cyan bg-nasa/30 font-bold text-cyan" : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>}
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <ErrorBoundary key={`${audienceMode}-${tab}`} >
+            {audienceMode === "simple" ? <SimplePanel onOpenReport={() => setReportOpen(true)} /> : <>
+            {tab === "metrics" && <ScenePanel />}
+            {tab === "trajectory" && (
+              <>
+                <PixelTrajectoryChart />
+                <EvidenceCardPanel />
+              </>
+            )}
+            {tab === "exposure" && <ExposureTable />}
+            </>}
+            </ErrorBoundary>
+          </div>
         </aside>
       </div>
+      </>
       )}
 
       <ProvenanceModal open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </div>
   );
+}
+
+export default function App() {
+  const [exploring, setExploring] = useState(() => window.location.hash === "#/explore" || window.location.pathname.replace(/\/$/, "").endsWith("/explore"));
+  useEffect(() => {
+    const navigate = () => {
+      setExploring(window.location.hash === "#/explore");
+      if (window.location.hash.startsWith("#/")) window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
+  return <ErrorBoundary>{exploring ? <MissionApp /> : <Suspense fallback={<div className="p-8 text-slate-300">Loading GeoSAR Drishti…</div>}><LandingLayout /></Suspense>}</ErrorBoundary>;
 }
