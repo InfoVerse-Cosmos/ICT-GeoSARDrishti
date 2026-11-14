@@ -25,8 +25,15 @@ AOI_BOUNDS = {  # [west, south, east, north] WGS84 (SRS §3.1)
 # --- SRS physics constants (§2, §5.2, §5.5) ---------------------------------
 MIN_DELTA_HH_DB = 3.0
 MIN_DELTA_RATIO_DB = 1.5
-OTSU_HH_RANGE_DB = (-22.0, -13.0)
-OTSU_HV_RANGE_DB = (-30.0, -20.0)
+# Calibrated on the real NISAR scenes (14 Nov 2026): the raw whole-scene Otsu lands at about -12 dB
+# (biased up by the huge land mode) and in Nagpur there is no water mode at all, so the SRS range
+# [-22, -13] let the threshold settle on the darkest LAND. The upper bounds are therefore capped at the
+# SRS §2 "typical open water" level (HH < -16 dB; HV < -22 dB, noise floor is ~ -25 dB), and Otsu is
+# run on the dark tail only (HH < -10 dB, HV < -16 dB) so it separates water from the intermediate mode.
+OTSU_HH_RANGE_DB = (-22.0, -16.0)
+OTSU_HV_RANGE_DB = (-30.0, -22.0)
+OTSU_TAIL_HH_DB = -10.0
+OTSU_TAIL_HV_DB = -16.0
 LINEAR_FLOOR = 1e-5
 MIN_WET_OBSERVATIONS = 3
 JRC_UNUSUAL_PCT = 20.0

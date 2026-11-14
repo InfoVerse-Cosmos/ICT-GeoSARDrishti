@@ -30,7 +30,7 @@ s02 = _load("02_subset_and_classify_sar.py")
 def test_thresholds_match_srs():
     assert s02.MIN_DELTA_HH_DB == 3.0
     assert s02.MIN_DELTA_RATIO_DB == 1.5
-    assert s02.OTSU_HH_RANGE_DB == (-22.0, -13.0)
+    assert s02.OTSU_HH_RANGE_DB == (-22.0, -16.0)  # capped at SRS §2 typical open water, see common.py
     assert s02.LINEAR_FLOOR == 1e-5
 
 

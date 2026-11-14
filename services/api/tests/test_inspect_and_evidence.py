@@ -126,8 +126,12 @@ def test_inspect_minimal_cube_without_optional_arrays(client, monkeypatch, tmp_p
     d = body["data"]
     assert d["hv_db"] == []
     assert d["gmm_regime"] is None and d["jrc_occurrence_pct"] is None
-    # Dates must still be plain ISO strings (falls back to manifest timeline).
-    assert all(isinstance(x, str) and len(x) == 10 for x in d["dates"]), d["dates"][:2]
+    # Dates fall back to the manifest timeline (ISO strings); if the cube has MORE steps than the
+    # manifest, the extra steps get t<n> labels instead of crashing /inspect.
+    assert len(d["dates"]) == len(d["hh_db"]) > 0
+    assert all(isinstance(x, str) for x in d["dates"])
+    timeline_dates = [t["date"] for t in __import__("app.data_store", fromlist=["store"]).store.get(ASSAM)["timeline"]]
+    assert d["dates"][:len(timeline_dates)] == timeline_dates[:len(d["dates"])]
 
 
 def test_inspect_zero_valid_observations_does_not_divide_by_zero(client, monkeypatch, tmp_path):
@@ -225,7 +229,7 @@ def test_card_with_empty_telemetry_is_safe():
     assert c["location"] is None
     assert c["monsoon_persistence"] == "Hydroperiod not available for this pixel."
     assert c["radar_physics_evidence"] == "No double-bounce surge recorded at this pixel."
-    assert "Unavailable" in c["land_cover_context"]
+    assert "not loaded" in c["land_cover_context"]
     assert c["confidence"] == "Low"
     assert c["caveat"] == CAVEAT
 

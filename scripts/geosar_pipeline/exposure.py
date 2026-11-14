@@ -23,21 +23,50 @@ def fetch_osm(bounds: list[float]):
     from .common import WORK_DIR
     ox.settings.cache_folder = str(WORK_DIR / "osm_cache")   # keep HTTP cache out of the repo root
 
+    import time
+
     west, south, east, north = bounds
-    frames = []
-    for tags in ({"highway": True}, {"place": ["village", "hamlet", "town"]}):
-        try:
-            gdf = ox.features_from_bbox(bbox=(west, south, east, north), tags=tags)  # osmnx >= 2
-        except TypeError:
-            gdf = ox.features_from_bbox(north, south, east, west, tags=tags)       # osmnx 1.x
-        frames.append(gdf.reset_index())
+    # The public Overpass servers are often at capacity (HTTP 502/429): retry with backoff and
+    # fall back to mirror servers instead of failing the whole stage.
+    endpoints = [None, "https://overpass.kumi.systems/api", "https://overpass.private.coffee/api"]
+    default_url = ox.settings.overpass_url
+
+    def query(tags):
+        last = None
+        for endpoint in endpoints:
+            ox.settings.overpass_url = endpoint or default_url
+            for attempt in range(3):
+                try:
+                    try:
+                        return ox.features_from_bbox(bbox=(west, south, east, north), tags=tags)  # osmnx >= 2
+                    except TypeError:
+                        return ox.features_from_bbox(north, south, east, west, tags=tags)       # osmnx 1.x
+                except Exception as exc:  # noqa: BLE001 - network / server errors
+                    last = exc
+                    wait = 5 * (2 ** attempt)
+                    print(f"[04] Overpass {ox.settings.overpass_url} failed ({type(exc).__name__}); retry in {wait}s")
+                    time.sleep(wait)
+        raise RuntimeError(f"all Overpass endpoints failed: {last}")
+
+    frames = [query(tags).reset_index() for tags in ({"highway": True}, {"place": ["village", "hamlet", "town"]})]
+    ox.settings.overpass_url = default_url
     return pd.concat(frames, ignore_index=True)
 
 
+SETTLEMENT_BUFFER_M = 200   # a settlement point is "exposed" if a wet pixel lies within this distance
+
+
 def _sample_points(geom, step_deg: float):
+    import math
+
     gt = geom.geom_type
     if gt == "Point":
-        return [(geom.x, geom.y)]
+        # OSM settlements are single points that almost never fall exactly on a wet 100 m pixel,
+        # so also test a ring around the point (centre + 8 points at SETTLEMENT_BUFFER_M).
+        dlat = SETTLEMENT_BUFFER_M / 111_320
+        dlon = dlat / max(math.cos(math.radians(geom.y)), 0.2)
+        ring = [(geom.x + dlon * math.cos(a * math.pi / 4), geom.y + dlat * math.sin(a * math.pi / 4)) for a in range(8)]
+        return [(geom.x, geom.y), *ring]
     if gt in ("LineString", "LinearRing"):
         n = max(2, int(geom.length / step_deg) + 1)
         return [geom.interpolate(i / (n - 1), normalized=True).coords[0] for i in range(n)]
@@ -71,7 +100,8 @@ def run(aoi_id: str, store: Path, *, osm_file: str | None = None, min_wet: int =
     step = min((east - west) / cols, (north - south) / rows) / 2
 
     threshold = min(min_wet, T)
-    note = f"Wet on >= {threshold} of {T} NISAR observations. Inspection candidates only — never a damage claim."
+    note = (f"Wet on >= {threshold} of {T} NISAR observations (settlements: wet pixel within {SETTLEMENT_BUFFER_M} m). "
+            "Inspection candidates only — never a damage claim.")
     if threshold < min_wet:
         note += f" Threshold lowered from {min_wet} because only {T} same-track dates exist (Plan C)."
 
@@ -85,14 +115,15 @@ def run(aoi_id: str, store: Path, *, osm_file: str | None = None, min_wet: int =
     log(f"[04] {len(gdf)} OSM features from {source}")
 
     features = []
+    settlements_checked = 0
     for _, row in gdf.iterrows():
         geom = row.geometry
         if geom is None or geom.is_empty:
             continue
         highway = row.get("highway") if "highway" in row else None
         place = row.get("place") if "place" in row else None
-        if isinstance(highway, str) and highway in SKIP_HIGHWAYS:
-            continue
+        if isinstance(highway, str) and (highway in SKIP_HIGHWAYS or geom.geom_type == "Point"):
+            continue    # footpaths etc.; also highway *nodes* (bus stops, crossings, signals) are not roads
         kind = "road" if isinstance(highway, str) else (place if isinstance(place, str) else None)
         if kind is None:
             continue
@@ -109,11 +140,20 @@ def run(aoi_id: str, store: Path, *, osm_file: str | None = None, min_wet: int =
         wet_any = wet[:, rr, cc].any(axis=1)                # per date: did the feature touch wet pixels?
         valid_any = (cls[:, rr, cc] != 255).any(axis=1)
         m = int(wet_any.sum())
+        if kind != "road":
+            settlements_checked += 1
         if m < threshold:
             continue
         osm_id = row.get("osmid", row.get("id", row.get("osm_id")))
         el = row.get("element", row.get("element_type", ""))
-        name = row.get("name") if isinstance(row.get("name"), str) else "unnamed"
+        if isinstance(row.get("name"), str):
+            name = row.get("name")
+        elif isinstance(row.get("ref"), str):
+            name = row.get("ref")
+        elif kind == "road":
+            name = f"{highway.replace('_', ' ')} road (unnamed)"
+        else:
+            name = f"{kind} (unnamed)"
         geom_s = geom.simplify(step / 2) if geom.geom_type != "Point" else geom
         features.append({
             "type": "Feature",
@@ -126,7 +166,12 @@ def run(aoi_id: str, store: Path, *, osm_file: str | None = None, min_wet: int =
                 "wet_dates": [d for d, w in zip(dates, wet_any) if w],
             },
         })
-    features.sort(key=lambda f: -f["properties"]["wet_observations"])
+    rank = {"motorway": 0, "trunk": 1, "primary": 2, "secondary": 3, "tertiary": 4}
+    features.sort(key=lambda f: (-f["properties"]["wet_observations"],
+                                 rank.get(f["properties"].get("highway"), 9),
+                                 "(unnamed)" in f["properties"]["name"]))   # important + named roads first
+    flagged = sum(1 for f in features if f["properties"]["kind"] != "road")
+    note += f" OSM settlements inside the area: {settlements_checked}, flagged: {flagged}."
     fc = {"type": "FeatureCollection", "features": features,
           "_meta": {"source": source, "generated_at": now_iso(), "threshold": threshold, "note": note,
                     "attribution": "© OpenStreetMap contributors"}}

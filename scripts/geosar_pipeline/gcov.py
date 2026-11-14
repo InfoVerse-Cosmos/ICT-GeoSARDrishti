@@ -47,10 +47,16 @@ def read_identification(f) -> dict:
 
 
 def polygon_bbox(wkt: str):
-    nums = [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", str(wkt))]
-    if len(nums) < 4:
+    """bbox [w, s, e, n] of a WKT POLYGON. Real NISAR polygons have 3 numbers per vertex
+    (lon lat height), synthetic/other ones 2 — so parse vertex by vertex (comma separated)."""
+    lons, lats = [], []
+    for vertex in str(wkt).replace("(", " ").replace(")", " ").split(","):
+        nums = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", vertex)
+        if len(nums) >= 2:
+            lons.append(float(nums[0]))
+            lats.append(float(nums[1]))
+    if len(lons) < 3:
         return None
-    lons, lats = nums[0::2], nums[1::2]
     return [min(lons), min(lats), max(lons), max(lats)]
 
 
@@ -128,7 +134,9 @@ def read_subset(path: str | Path, lats: np.ndarray, lons: np.ndarray, res_m: flo
         fill_mask = None
         if "mask" in grid:
             m = grid["mask"][r0:r1, c0:c1]
-            fill_mask = m == 255  # 255 = fill / outside swath
+            # NISAR GCOV `mask` = sub-swath number of valid samples: 0 = not fully focused (invalid),
+            # 255 = outside the acquisition extent (fill); 1..n = valid.
+            fill_mask = (m == 0) | (m == 255)
 
         for key, ds_name in (("hh", "HHHH"), ("hv", "HVHV")):
             if ds_name not in grid:

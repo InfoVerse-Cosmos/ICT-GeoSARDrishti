@@ -399,8 +399,8 @@ function Legend({ layer, simple }) {
   } else if (layer === "flooded_veg") {
     body = (
       <>
-        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-fveg" />Natural flooded vegetation</div>
-        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-paddy" />Paddy-like agricultural inundation</div>
+        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-fveg" />Possible flooded vegetation (HH surge ≥ +3 dB vs dry reference)</div>
+        <div className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-sm bg-paddy" />Paddy-like: only when ESA WorldCover is loaded</div>
       </>
     );
   } else if (layer === "jrc_anomaly") {

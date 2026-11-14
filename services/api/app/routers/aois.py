@@ -77,6 +77,7 @@ def provenance(aoi_id: str) -> dict:
             "reference_date": prov.get("reference_date") or manifest.get("reference_date"),
             "synthetic_test_data": bool(manifest.get("synthetic_test_data", False)),
             "calibration_check": prov.get("calibration_check"),
+            "threshold_method": prov.get("threshold_method"),
             "masks": prov.get("masks"),
             "gmm": prov.get("gmm"),
             "jrc": prov.get("jrc"),

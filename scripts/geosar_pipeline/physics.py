@@ -71,9 +71,16 @@ def otsu_threshold(values: np.ndarray, bins: int = 256) -> float | None:
     return float(centres[int(np.argmax(between))])
 
 
-def dynamic_threshold(db: np.ndarray, rng: tuple[float, float]) -> float:
-    """Per-scene Otsu clipped into the SRS physical range."""
-    t = otsu_threshold(db)
+def dynamic_threshold(db: np.ndarray, rng: tuple[float, float], tail_max: float | None = None) -> float:
+    """Per-scene Otsu clipped into the physical range.
+
+    tail_max: run Otsu only on pixels darker than this (dark tail), so the huge land mode does not
+    pull the threshold up into the land/sand/wet-soil range (see common.OTSU_* notes)."""
+    v = np.asarray(db, dtype="float64")
+    v = v[np.isfinite(v)]
+    if tail_max is not None:
+        v = v[v < tail_max]
+    t = otsu_threshold(v)
     if t is None:
         t = (rng[0] + rng[1]) / 2
     return float(min(max(t, rng[0]), rng[1]))
