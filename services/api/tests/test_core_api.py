@@ -143,7 +143,8 @@ def test_provenance_thresholds_match_srs(client, aoi_id):
 @pytest.mark.parametrize("aoi_id", AOI_IDS)
 def test_provenance_limitations_use_honest_language(client, aoi_id):
     lims = " ".join(client.get(f"/api/v1/aois/{aoi_id}/provenance").json()["data"]["limitations"]).lower()
-    assert "inter-sensor agreement" in lims
+    if client.get(f"/api/v1/aois/{aoi_id}/provenance").json()["data"].get("opera_dswx_agreement_pct") is not None:
+        assert "inter-sensor agreement" in lims   # only claimed when an OPERA comparison was actually made
     assert "m of n" in lims
     assert "not confirmed flood depth" in lims or "not a confirmed flood-depth" in lims
     # Pitch guide §10: "accuracy" may only appear negated.
@@ -214,10 +215,15 @@ def test_cors_origin_list_parsing():
         "https://a.io", "https://b.io"]
 
 
-def test_llm_enabled_requires_key_base_and_model():
-    assert not Settings(llm_api_key="k", _env_file=None).llm_enabled
-    assert not Settings(llm_api_key="k", llm_api_base="b", _env_file=None).llm_enabled
-    assert Settings(llm_api_key="k", llm_api_base="b", llm_model="m", _env_file=None).llm_enabled
+def test_llm_enabled_needs_only_a_key_and_defaults_to_openai():
+    assert not Settings(_env_file=None).llm_enabled
+    assert not Settings(llm_api_key="  ", _env_file=None).llm_enabled
+    st = Settings(llm_api_key="k", _env_file=None)
+    assert st.llm_enabled
+    assert st.llm_base_url == "https://api.openai.com/v1"
+    assert st.llm_model_name == "gpt-4o-mini"
+    custom = Settings(llm_api_key="k", llm_api_base="http://x/v1/", llm_model="m", _env_file=None)
+    assert (custom.llm_base_url, custom.llm_model_name) == ("http://x/v1", "m")
 
 
 def test_default_external_timeout_is_within_srs_limits():
@@ -225,24 +231,46 @@ def test_default_external_timeout_is_within_srs_limits():
 
 
 # ---------------------------------------------------------------- data store fallback (§7.1)
-def test_data_store_missing_directory_serves_static_defaults(monkeypatch, tmp_path):
+def _make_pack(root, aoi_id, cube=True, manifest='{"aoi_id": "%s", "bounds": [1, 2, 3, 4]}'):
+    d = root / aoi_id
+    d.mkdir(parents=True)
+    (d / "manifest.json").write_text(manifest % aoi_id if "%s" in manifest else manifest)
+    if cube:
+        (d / "time_series_cube.npz").write_bytes(b"x")
+
+
+def test_empty_data_store_lists_nothing_and_never_invents_areas(client, monkeypatch, tmp_path):
     monkeypatch.setattr(ds_module, "DATA_STORE", tmp_path / "does_not_exist")
     s = ds_module.DataStore()
     s.load()
-    assert {a["aoi_id"] for a in s.list_aois()} >= set(AOI_IDS)
-    assert s.using_fallback is True
+    assert s.list_aois() == [] and s.using_fallback is True
+    monkeypatch.setattr("app.routers.aois.store", s)
+    body = client.get("/api/v1/aois").json()
+    assert body["status"] == "no_data" and body["data"]["aois"] == []
+    assert body["data"]["onboarding"]["steps"]
 
 
-def test_data_store_corrupt_manifest_falls_back_to_default(monkeypatch, tmp_path):
-    (tmp_path / "aoi_assam_majuli").mkdir()
-    (tmp_path / "aoi_assam_majuli" / "manifest.json").write_text("{corrupt")
+def test_only_areas_with_a_built_pack_are_listed(monkeypatch, tmp_path):
+    _make_pack(tmp_path, "aoi_built")
+    _make_pack(tmp_path, "aoi_no_cube", cube=False)      # manifest only: not analysed -> hidden
+    _make_pack(tmp_path, "aoi_corrupt", manifest="{corrupt")
     monkeypatch.setattr(ds_module, "DATA_STORE", tmp_path)
     s = ds_module.DataStore()
     s.load()
-    assert s.get("aoi_assam_majuli")["bounds"] == [93.90, 26.75, 94.30, 27.05]
+    assert [a["aoi_id"] for a in s.list_aois()] == ["aoi_built"]
+    assert s.get("aoi_no_cube") is None and s.get("aoi_corrupt") is None
 
 
-def test_committed_manifests_are_valid_json():
+def test_new_pack_appears_without_restarting(monkeypatch, tmp_path):
+    monkeypatch.setattr(ds_module, "DATA_STORE", tmp_path)
+    s = ds_module.DataStore()
+    s.load()
+    assert s.list_aois() == []
+    _make_pack(tmp_path, "aoi_fresh")
+    assert [a["aoi_id"] for a in s.list_aois()] == ["aoi_fresh"]
+
+
+def test_shipped_aoi_manifests_are_valid_json():
     for aoi_id in AOI_IDS:
         manifest = ds_module.DATA_STORE / aoi_id / "manifest.json"
         assert manifest.exists(), manifest

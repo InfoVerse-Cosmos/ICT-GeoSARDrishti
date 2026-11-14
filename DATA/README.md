@@ -36,6 +36,19 @@ It reads the granules here, **auto-detects the area** from them, builds the anal
 pack, and starts the app at <http://localhost:5173>. Your area appears in the top-bar
 selector — open the **Analysis Report** for a plain-language summary.
 
+## Short on disk space?
+
+Granules are ~7 GB each. You can keep them on another drive and tell the app where in
+`services/api/.env` (see `.env.example`):
+
+```
+GEOSAR_DATA_DIR=D:/Hackathon Files      # where your .h5 files are
+GEOSAR_DATA_STORE=D:/geosar_packs       # where the analysed results are written
+```
+
+The app lists **only** areas you have analysed. Nothing is pre-loaded, cached in the
+repo, or simulated: no data analysed = an empty screen telling you what to do.
+
 ## Notes
 
 - Your `.h5` files are large and stay **only on your machine** — git ignores them, so

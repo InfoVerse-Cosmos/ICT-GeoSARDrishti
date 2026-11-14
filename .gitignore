@@ -38,3 +38,8 @@ scripts/_work/
 .agents/
 .worktrees/
 Docs/
+
+# Analysed AOI packs + offline mirror are GENERATED on each machine from the NISAR granules the
+# user drops in DATA/ (or GEOSAR_DATA_DIR). Never committed, never shipped, never mocked.
+services/api/data_store/*/
+apps/web/public/fallback_data/manifest.json

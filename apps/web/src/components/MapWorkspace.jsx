@@ -77,8 +77,12 @@ export default function MapWorkspace({ onPixelInspected }) {
       if (!current()) return;
       setClickedPixel({ ...(res.data || {}), lat, lon: lng, status: res.status, warning: res.warning });
       if (res.status === "ok") {
-        const card = await api.evidenceCard({ aoi_id: aoiId, lat, lon: lng, telemetry: res.data });
-        if (current()) setEvidenceCard(card.data?.card || null);
+        const payload = { aoi_id: aoiId, lat, lon: lng, telemetry: res.data };
+        // 1) instant built-in card, 2) upgraded with the AI wording if/when it arrives (never blocks the UI)
+        const card = await api.evidenceCard(payload);
+        if (current()) { setEvidenceCard(card.data?.card || null); setEvidenceLoading(false); }
+        const llm = await api.evidenceCard(payload, { narrate: true });
+        if (current() && llm.data?.card?.mode === "llm_grounded") setEvidenceCard(llm.data.card);
       }
     } catch (error) {
       if (current()) {

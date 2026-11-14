@@ -8,6 +8,8 @@ REM ---------------------------------------------------------------------------
 setlocal enabledelayedexpansion
 set "ROOT=%~dp0"
 set "DATA_DIR=%ROOT%DATA"
+REM .env (GEOSAR_DATA_DIR) can point at a folder on another drive, e.g. D:/Hackathon Files
+for /f "usebackq delims=" %%D in (`python "%ROOT%scripts\print_data_dir.py" 2^>nul`) do set "DATA_DIR=%%D"
 set "PVENV=%ROOT%scripts\.venv"
 
 REM --- 1. check for granules -------------------------------------------------
@@ -19,7 +21,7 @@ if not defined FOUND (
   echo [analyze] copy them into the DATA folder, then run analyze.bat again. See DATA\README.md.
   exit /b 1
 )
-echo [analyze] Found NISAR granule(s) in DATA\.
+echo [analyze] Found NISAR granule(s) in %DATA_DIR%
 
 REM --- 2. processing environment ---------------------------------------------
 where python >nul 2>nul || ( echo [analyze] python not found. Install Python 3.11+. & exit /b 1 )
@@ -32,12 +34,15 @@ echo [analyze] Installing processing dependencies...
 python -m pip install --quiet --upgrade pip
 python -m pip install --quiet numpy h5py pyproj || ( echo [analyze] Could not install core deps. Install Python 3.11, delete scripts\.venv, retry. & exit /b 1 )
 python -m pip install --quiet scikit-learn || echo [analyze] scikit-learn unavailable - GMM regimes will be skipped.
+python -m pip install --quiet geopandas shapely osmnx || echo [analyze] osmnx unavailable - inspection roads will be skipped.
 
 REM --- 3. build the pack -----------------------------------------------------
-if not defined AOI_ID set "AOI_ID=aoi_my_data"
-if not defined AOI_NAME set "AOI_NAME=My Area"
+REM No AOI_ID/AOI_NAME needed: each track/frame stack in the folder becomes its own area automatically.
+set "AOI_ARGS="
+if defined AOI_ID set "AOI_ARGS=--aoi-id %AOI_ID%"
+if defined AOI_NAME set "AOI_ARGS=%AOI_ARGS% --name "%AOI_NAME%""
 echo [analyze] Building the analysis pack (area auto-detected from the granules)...
-python "%ROOT%scripts\byod_build_aoi.py" --aoi-id "%AOI_ID%" --name "%AOI_NAME%" --with-regimes
+python "%ROOT%scripts\byod_build_aoi.py" %AOI_ARGS% --with-regimes --with-osm
 call deactivate
 
 REM --- 4. start the app ------------------------------------------------------

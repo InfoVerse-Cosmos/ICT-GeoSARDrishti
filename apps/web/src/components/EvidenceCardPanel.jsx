@@ -36,9 +36,13 @@ export default function EvidenceCardPanel() {
           <Row k="Radar Physics Evidence" v={card.radar_physics_evidence} />
           <Row k="Land Cover & Historical Context" v={card.land_cover_context} />
           <Row k="Confidence" v={card.confidence} />
-          {card.narration && <Row k="Narration (LLM, grounded)" v={card.narration} />}
+          {card.narration && <Row k={`Plain-language narration (AI: ${card.narration_model || "LLM"}, numbers from radar pack)`} v={card.narration} />}
           <p className="border-t border-grid pt-2 text-xs italic text-slate-400">{card.caveat}</p>
-          <span className="telemetry-mono text-xs text-slate-400">mode: {card.mode}</span>
+          <span className="telemetry-mono text-xs text-slate-400">
+            {card.mode === "llm_grounded"
+              ? `explained by AI (${card.narration_model || "LLM"}) · every number computed from NISAR`
+              : "explained by built-in physics template · AI narrator off or unavailable, numbers identical"}
+          </span>
         </div>
       )}
     </div>
