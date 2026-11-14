@@ -136,8 +136,13 @@ def main() -> int:
     p.add_argument("--name", help="human-readable AOI name shown in the app selector (default: from --aoi-id)")
     p.add_argument("--bbox", type=parse_bbox,
                    help="west,south,east,north (WGS84); default: auto-detected from the granule footprints")
-    p.add_argument("--h5-dir", default=envcfg.get("GEOSAR_DATA_DIR") or str(common.REPO_ROOT / "DATA"),
-                   help="folder holding your NISAR GCOV .h5 granules (default: GEOSAR_DATA_DIR from .env, else the repo-root DATA/ folder)")
+    p.add_argument("--h5-dir", action="append", metavar="DIR",
+                   help="folder holding your NISAR GCOV .h5 granules (default: GEOSAR_DATA_DIR from .env, "
+                        "else the repo-root DATA/ folder). Repeatable — pass it several times to feed "
+                        "adjacent frames from more than one folder.")
+    p.add_argument("--mosaic", action="store_true",
+                   help="composite same-track, same-date granules across adjacent frames onto the AOI grid "
+                        "(linear-power union) instead of one pack per track/frame")
     p.add_argument("--track-frame", help="force a track/frame (default: longest same-track stack)")
     p.add_argument("--ref-date", help="dry reference date YYYY-MM-DD (default: latest acquisition)")
     p.add_argument("--res-m", type=float, default=None,
@@ -161,17 +166,25 @@ def main() -> int:
         p.error("--aoi-id must contain only lowercase letters, digits and underscores")
 
     store = common.data_store(args.data_store)
-    h5_dir = Path(args.h5_dir).expanduser()
-    if not h5_dir.is_dir():
-        p.error(
-            f"granule folder not found: {h5_dir}\n"
-            "       Put your NISAR L2 GCOV .h5 granules in the repo-root DATA/ folder "
-            "(or set GEOSAR_DATA_DIR in services/api/.env, or pass --h5-dir). See DATA/README.md."
-        )
-    h5_files = sorted(h5_dir.glob("*.h5"))
+    # --h5-dir is repeatable (append); default to GEOSAR_DATA_DIR / the repo-root DATA/ when unset.
+    default_dir = envcfg.get("GEOSAR_DATA_DIR") or str(common.REPO_ROOT / "DATA")
+    h5_dir_args = args.h5_dir or [default_dir]
+    h5_dirs = []
+    for d in h5_dir_args:
+        hd = Path(d).expanduser()
+        if not hd.is_dir():
+            p.error(
+                f"granule folder not found: {hd}\n"
+                "       Put your NISAR L2 GCOV .h5 granules in the repo-root DATA/ folder "
+                "(or set GEOSAR_DATA_DIR in services/api/.env, or pass --h5-dir). See DATA/README.md."
+            )
+        h5_dirs.append(hd)
+    h5_files = []
+    for hd in h5_dirs:
+        h5_files.extend(sorted(hd.glob("*.h5")))   # non-recursive per dir (avoids _prev_* / nested dupes)
     if not h5_files:
         p.error(
-            f"no NISAR .h5 granules found in {h5_dir}\n"
+            f"no NISAR .h5 granules found in {', '.join(str(d) for d in h5_dirs)}\n"
             "       Download NISAR L2 GCOV granules for your area from NASA Earthdata/ASF or "
             "ISRO Bhoonidhi (your responsibility), drop the .h5 files into DATA/, and run again."
         )
@@ -184,9 +197,29 @@ def main() -> int:
         if g:
             by_tf.setdefault(g["track_frame"], []).append(f)
     if not by_tf:
-        p.error(f"none of the .h5 files in {h5_dir} look like NISAR L2 GCOV products")
+        p.error(f"none of the .h5 files in {', '.join(str(d) for d in h5_dirs)} look like NISAR L2 GCOV products")
     if args.aoi_id or args.track_frame:
         jobs = [(args.aoi_id or "aoi_my_data", args.name, args.bbox, args.track_frame, h5_files)]
+    elif args.mosaic:
+        # Mosaic: combine adjacent frames of the SAME track into ONE area (compositing is done
+        # per date inside process.run), so 074+075+076 become a single wider pack, not three.
+        by_track = {}
+        for f in h5_files:
+            g = common.parse_granule_name(f.name)
+            if g:
+                by_track.setdefault(g["track"], []).append(f)
+        jobs = []
+        for trk, files in sorted(by_track.items()):
+            fp = autodetect_bbox(files)
+            known = common.match_known_area(fp) if fp else None
+            if known:
+                aoi_id, name = known, common.KNOWN_AREAS[known]["name"]
+                bbox = args.bbox or common.KNOWN_AREAS[known]["bounds"]
+            else:
+                aoi_id, name, bbox = auto_identity(f"{trk:03d}", fp), None, args.bbox or fp
+            jobs.append((aoi_id, args.name if len(by_track) == 1 and args.name else name, bbox, None, files))
+        print(f"[byod] mosaic: {len(h5_files)} granule(s) across frames -> {len(jobs)} area(s): "
+              + ", ".join(f"{j[0]} ({len(j[4])} files)" for j in jobs))
     else:
         jobs = []
         for tf, files in sorted(by_tf.items()):
@@ -204,7 +237,7 @@ def main() -> int:
     failures = 0
     for aoi_id, name, bbox, tf, files in jobs:
         try:
-            build_pack(args, store, h5_dir, files, aoi_id, name, bbox, tf)
+            build_pack(args, store, h5_dirs, files, aoi_id, name, bbox, tf)
         except Exception as exc:  # noqa: BLE001 - one bad area must not stop the others
             failures += 1
             print(f"[byod] ERROR building {aoi_id}: {exc}")
@@ -228,7 +261,7 @@ def auto_identity(track_frame, fp):
                                     "e" if lon >= 0 else "w", abs(lon), int(abs(lon) % 1 * 10))
 
 
-def build_pack(args, store, h5_dir, h5_files, aoi_id, name, bbox, track_frame):
+def build_pack(args, store, h5_dirs, h5_files, aoi_id, name, bbox, track_frame):
     """Build one area's pack (stages 02-04) from the given granule stack."""
     if bbox is None:
         bbox = autodetect_bbox(h5_files)
@@ -257,8 +290,9 @@ def build_pack(args, store, h5_dir, h5_files, aoi_id, name, bbox, track_frame):
     common.save_manifest(aoi_id, store, manifest)
 
     # ---- stage 02: classify + hydroperiod (required) --------------------------------
-    manifest = process.run(aoi_id, h5_dir, store, track_frame=track_frame or args.track_frame,
-                           ref_date=args.ref_date, res_m=res_m, worldcover=args.worldcover, dem=args.dem)
+    manifest = process.run(aoi_id, h5_dirs, store, track_frame=track_frame or args.track_frame,
+                           ref_date=args.ref_date, res_m=res_m, worldcover=args.worldcover,
+                           dem=args.dem, mosaic=args.mosaic)
     print(f"[byod] stage 02 done - plan {manifest.get('fallback_plan')} - "
           f"{len(manifest.get('timeline', []))} dates - track {manifest.get('track_frame')}")
     for t in manifest.get("timeline", []):

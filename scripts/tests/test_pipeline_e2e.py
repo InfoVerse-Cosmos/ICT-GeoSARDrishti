@@ -49,7 +49,13 @@ def h5_dir(tmp_path_factory):
 def store(tmp_path_factory, h5_dir):
     s = tmp_path_factory.mktemp("store")
     for aoi in common.AOI_BOUNDS:
-        shutil.copytree(common.DEFAULT_DATA_STORE / aoi, s / aoi)
+        src = common.DEFAULT_DATA_STORE / aoi
+        if src.exists():
+            shutil.copytree(src, s / aoi)
+        else:
+            # 45a551a (PR #11) removed the bundled AOI packs; seed a default manifest
+            # instead of shutil.copytree (which would raise on the missing source dir).
+            common.save_manifest(aoi, s, common.load_manifest(aoi, s))
     return s
 
 
@@ -84,6 +90,17 @@ def test_data_gate_from_names_only():
 def test_data_gate_drops_granules_outside_the_aoi(h5_dir):
     gs = data_gate.granules_from_dir(h5_dir, "aoi_nagpur_kanhan")   # synthetic files cover Assam only
     assert gs and all(g.get("skipped") for g in gs)
+
+
+def test_data_gate_skips_truncated_granule(tmp_path):
+    # A valid NISAR name but not valid HDF5 (e.g. a half-finished download) must be
+    # skipped with a warning, not crash the gate (regression for the truncated-file OSError).
+    name = ("NISAR_L2_PR_GCOV_029_149_D_075_2005_DHDH_M_"
+            "20260904T130705_20260904T130739_P05023_N_F_J_001.h5")
+    (tmp_path / name).write_bytes(b"\x89HDF\r\n\x1a\n not a real hdf5 file")
+    gs = data_gate.granules_from_dir(tmp_path, "aoi_assam_majuli")
+    assert len(gs) == 1
+    assert gs[0].get("skipped") == "unreadable or truncated granule"
 
 
 # ------------------------------------------------------------------ 02 classify + hydroperiod

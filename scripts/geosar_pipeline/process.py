@@ -7,10 +7,10 @@ import numpy as np
 
 from .common import (AOI_BOUNDS, MAX_SLOPE_DEG, MIN_DELTA_HH_DB, MIN_DELTA_RATIO_DB, OTSU_HH_RANGE_DB,
                      OTSU_HV_RANGE_DB, OTSU_TAIL_HH_DB, OTSU_TAIL_HV_DB, WC_CROPLAND, WC_VEGETATION, aoi_grid,
-                     fallback_plan, load_manifest,
+                     fallback_plan, group_by_track_number, load_manifest,
                      mask_to_rgba, now_iso, pixel_area_km2, sample_geotiff, save_manifest, select_best_track,
                      write_png)
-from .data_gate import granules_from_dir
+from .data_gate import granules_from_dir, granules_from_dirs
 from .physics import (DRY, FLOODED_VEG, NODATA_CLASS, OPEN_WATER, classify_scene, dynamic_threshold,
                       hydroperiod, median3, slope_deg, to_db)
 
@@ -32,32 +32,74 @@ def hydroperiod_rgba(m_total: np.ndarray, n_valid: np.ndarray) -> np.ndarray:
 
 def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None = None,
         ref_date: str | None = None, res_m: float = 100.0, worldcover: str | None = None,
-        dem: str | None = None, log=print) -> dict:
+        dem: str | None = None, mosaic: bool = False, log=print) -> dict:
     manifest = load_manifest(aoi_id, store)
     bounds = manifest.get("bounds") or AOI_BOUNDS[aoi_id]
     rows, cols, lats, lons = aoi_grid(bounds, res_m)
     log(f"[02] AOI {aoi_id} grid {rows}x{cols} @ {res_m:.0f} m")
 
-    granules = [g for g in granules_from_dir(h5_dir, aoi_id) if not g.get("skipped")]
-    tf, stack = select_best_track(granules, track_frame)
-    log(f"[02] track/frame {tf}: {[g['date'] for g in stack]}")
+    # --h5-dir is repeatable; normalise to a list and union+de-dup across folders.
+    h5_dirs = [h5_dir] if isinstance(h5_dir, (str, Path)) else list(h5_dir)
+    granules = [g for g in granules_from_dirs(h5_dirs, aoi_id) if not g.get("skipped")]
 
     # ---- read + multilook + speckle filter + dB --------------------------------------
-    from .gcov import read_subset  # h5py/pyproj imported lazily
+    from .gcov import mosaic_subsets, read_subset  # h5py/pyproj imported lazily
 
     hh_list, hv_list, used, coverage, synthetic, epsgs = [], [], [], {}, False, set()
-    for g in stack:
-        sub = read_subset(g["path"], lats, lons, res_m)
-        coverage[g["date"]] = sub["coverage_pct"]
-        synthetic |= sub["synthetic"]
-        if sub["hh"] is None or sub["coverage_pct"] < 5:
-            log(f"[02]   {g['date']}: skipped (AOI coverage {sub['coverage_pct']}%)")
-            continue
-        epsgs.add(sub["epsg"])
-        hh_list.append(to_db(median3(sub["hh"])))
-        hv_list.append(to_db(median3(sub["hv"])) if sub["hv"] is not None else None)
-        used.append(g)
-        log(f"[02]   {g['date']}: coverage {sub['coverage_pct']}%  pols={sub['polarizations']}")
+    mosaic_frames: dict[str, list[dict]] = {}   # date -> per-frame provenance (mosaic mode only)
+
+    if mosaic:
+        groups = group_by_track_number(granules)
+        if not groups:
+            raise ValueError("no NISAR GCOV granules found")
+        # pick the track number with the most distinct dates (ties -> latest start)
+        best = max(groups, key=lambda k: (len({g["date"] for g in groups[k]}), groups[k][-1]["start_utc"]))
+        tf = f"track-{best:03d} mosaic"
+        by_date: dict[str, list[dict]] = {}
+        for g in groups[best]:
+            by_date.setdefault(g["date"], []).append(g)
+        log(f"[02] mosaic track {best}: {sorted(by_date)}")
+        for date in sorted(by_date):
+            frame_gs = sorted(by_date[date], key=lambda g: g["frame"])
+            subs, frame_prov = [], []
+            for g in frame_gs:
+                sub = read_subset(g["path"], lats, lons, res_m)
+                synthetic |= sub["synthetic"]
+                frame_prov.append({"granule_id": g["granule_id"], "track_frame": g["track_frame"],
+                                   "frame": g["frame"], "coverage_pct": sub["coverage_pct"],
+                                   "epsg": sub["epsg"]})
+                if sub["hh"] is None or sub["coverage_pct"] < 5:
+                    log(f"[02]   {date} {g['track_frame']}: skipped (AOI coverage {sub['coverage_pct']}%)")
+                    continue
+                subs.append(sub)
+            if not subs:
+                log(f"[02]   {date}: no frame covers the AOI — skipped")
+                continue
+            merged = mosaic_subsets(subs)
+            coverage[date] = merged["coverage_pct"]
+            epsgs.update(merged["epsg"])
+            hh_list.append(to_db(median3(merged["hh"])))
+            hv_list.append(to_db(median3(merged["hv"])) if merged["hv"] is not None else None)
+            # one representative granule per date keeps the manifest/cube shape unchanged
+            rep = next((g for g in frame_gs if g["frame"] == 75), frame_gs[0])
+            used.append(rep)
+            mosaic_frames[date] = frame_prov
+            log(f"[02]   {date}: mosaic of {len(subs)} frame(s) coverage {merged['coverage_pct']}%")
+    else:
+        tf, stack = select_best_track(granules, track_frame)
+        log(f"[02] track/frame {tf}: {[g['date'] for g in stack]}")
+        for g in stack:
+            sub = read_subset(g["path"], lats, lons, res_m)
+            coverage[g["date"]] = sub["coverage_pct"]
+            synthetic |= sub["synthetic"]
+            if sub["hh"] is None or sub["coverage_pct"] < 5:
+                log(f"[02]   {g['date']}: skipped (AOI coverage {sub['coverage_pct']}%)")
+                continue
+            epsgs.add(sub["epsg"])
+            hh_list.append(to_db(median3(sub["hh"])))
+            hv_list.append(to_db(median3(sub["hv"])) if sub["hv"] is not None else None)
+            used.append(g)
+            log(f"[02]   {g['date']}: coverage {sub['coverage_pct']}%  pols={sub['polarizations']}")
 
     if len(used) < 1:
         raise RuntimeError("no granule covers the AOI — check footprint / choose another track (Plan D)")
@@ -99,9 +141,16 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
         t_hh = dynamic_threshold(hh[t][valid_static], OTSU_HH_RANGE_DB, OTSU_TAIL_HH_DB)
         t_hv = dynamic_threshold(hv[t][valid_static], OTSU_HV_RANGE_DB, OTSU_TAIL_HV_DB) if dual_pol else None
         thresholds[dates[t]] = {"hh_db": round(t_hh, 2), "hv_db": None if t_hv is None else round(t_hv, 2)}
-        valid = np.isfinite(hh[t]) & np.isfinite(hh_ref) & valid_static
+        # Mosaic mode decouples per-date validity from the reference so a date keeps n_valid>0
+        # where it has coverage but the dry reference does not (e.g. the northern mosaic strip).
+        # flooded-veg still needs a finite reference (ΔHH), so it is simply not flagged there.
+        valid = np.isfinite(hh[t]) & valid_static
+        if not mosaic:
+            valid &= np.isfinite(hh_ref)
         if dual_pol:
-            valid &= np.isfinite(hv[t]) & np.isfinite(hv_ref)
+            valid &= np.isfinite(hv[t])
+            if not mosaic:
+                valid &= np.isfinite(hv_ref)
         cls[t] = classify_scene(hh[t], hv[t] if dual_pol else None, hh_ref, hv_ref, veg_mask,
                                 t_hh, t_hv if t_hv is not None else 0.0, valid=valid)
 
@@ -217,6 +266,23 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
                        "crs_native": sorted(epsgs), "single_pol_mode": not dual_pol,
                        "pipeline": "scripts/02_subset_and_classify_sar.py"},
     })
+    if mosaic:
+        prov["mosaic"] = {
+            "selected_track": tf,
+            "dates": {
+                g["date"]: {
+                    "frames": [e["track_frame"] for e in mosaic_frames.get(g["date"], [])],
+                    "granule_ids": [e["granule_id"] for e in mosaic_frames.get(g["date"], [])],
+                    "per_frame_coverage_pct": {e["track_frame"]: e["coverage_pct"]
+                                               for e in mosaic_frames.get(g["date"], [])},
+                    "crs_native": sorted({e["epsg"] for e in mosaic_frames.get(g["date"], [])}),
+                }
+                for g in used
+            },
+            "note": ("Per date, each frame is reprojected onto the common AOI grid and merged in "
+                     "linear power (NaN-aware mean over the frame overlap); per-date validity is "
+                     "decoupled from the dry reference so coverage-only dates still show HH/HV."),
+        }
     lims = prov.setdefault("limitations", [])
     # Honest-framing statements are part of EVERY pack (SRS section 10), not only hand-curated ones.
     for msg in ("Radar-derived surface/canopy-water indication for inspection, not confirmed flood depth.",
@@ -234,6 +300,17 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
         msg = f"Only {T} same-track dates available — Plan C change comparison, not a full-season hydroperiod."
         if not any(l.startswith("Only ") for l in lims):
             lims.append(msg)
+    if mosaic:
+        counts = {d: len(fs) for d, fs in mosaic_frames.items()}
+        max_frames = max(counts.values()) if counts else 0
+        sparse = sorted(d for d, n in counts.items() if n < max_frames)
+        if sparse and max_frames > 1:
+            msg = ("Multi-frame mosaic: " + ", ".join(sparse) + " has fewer frames / partial "
+                   "coverage than the fullest date, so where the dry reference is not imaged "
+                   "change-vs-reference (flooded-vegetation) is not computed — open-water and raw "
+                   "HH/HV trajectories are still shown there.")
+            if not any(l.startswith("Multi-frame mosaic:") for l in lims):
+                lims.append(msg)
     save_manifest(aoi_id, store, manifest)
     log(f"[02] wrote cube + {len(list(ov_dir.glob('*.png')))} overlays; plan {manifest['fallback_plan']}")
     return manifest
