@@ -142,6 +142,20 @@ def group_by_track(granules: list[dict]) -> dict[str, list[dict]]:
     return dict(groups)
 
 
+def group_by_track_number(granules: list[dict]) -> dict[int, list[dict]]:
+    """Group granules by track NUMBER only (ignoring frame); each list sorted by start_utc.
+
+    Used by the multi-frame mosaic path to gather adjacent frames of the same track so they
+    can be composited per date. group_by_track / select_best_track are left untouched.
+    """
+    groups: dict[int, list[dict]] = defaultdict(list)
+    for g in granules:
+        groups[g["track"]].append(g)
+    for v in groups.values():
+        v.sort(key=lambda g: g["start_utc"])
+    return dict(groups)
+
+
 def select_best_track(granules: list[dict], track_frame: str | None = None) -> tuple[str, list[dict]]:
     """Same-track stack with the most dates (ties -> latest start). SRS §3.2."""
     groups = group_by_track(granules)

@@ -49,7 +49,13 @@ def h5_dir(tmp_path_factory):
 def store(tmp_path_factory, h5_dir):
     s = tmp_path_factory.mktemp("store")
     for aoi in common.AOI_BOUNDS:
-        shutil.copytree(common.DEFAULT_DATA_STORE / aoi, s / aoi)
+        src = common.DEFAULT_DATA_STORE / aoi
+        if src.exists():
+            shutil.copytree(src, s / aoi)
+        else:
+            # 45a551a (PR #11) removed the bundled AOI packs; seed a default manifest
+            # instead of shutil.copytree (which would raise on the missing source dir).
+            common.save_manifest(aoi, s, common.load_manifest(aoi, s))
     return s
 
 

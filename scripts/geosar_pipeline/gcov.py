@@ -6,6 +6,7 @@ Needs: h5py, pyproj.
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -150,3 +151,45 @@ def read_subset(path: str | Path, lats: np.ndarray, lons: np.ndarray, res_m: flo
             arr[inside] = block[ri[inside] - r0, ci[inside] - c0]
             result[key] = arr
         return result
+
+
+def mosaic_subsets(subsets: list[dict]) -> dict:
+    """Composite several read_subset() results for ONE date (already on the common AOI grid).
+
+    Merges 'hh' and 'hv' in LINEAR power with a NaN-aware mean across frames: the union of
+    coverage is kept and pixels seen by more than one frame are averaged. A None channel is
+    treated as absent (a channel merges to None only when every frame lacks it). Returns the
+    same dict shape as read_subset (so the pipeline feeds it straight into median3/to_db) with
+    coverage_pct = 100 * finite-fraction of the merged hh, epsg = sorted set of input EPSGs,
+    native_spacing_m = the smallest input spacing, polarizations = sorted union, synthetic =
+    any input synthetic, identification = the first input's, plus a per-frame 'frames' list.
+    read_subset and all other functions are left untouched.
+    """
+    if not subsets:
+        raise ValueError("mosaic_subsets: need at least one subset to composite")
+    merged: dict = {}
+    for key in ("hh", "hv"):
+        arrs = [np.asarray(s[key], dtype="float64") for s in subsets if s.get(key) is not None]
+        if arrs:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)  # all-NaN columns -> NaN (expected)
+                merged[key] = np.nanmean(np.stack(arrs), axis=0)
+        else:
+            merged[key] = None
+
+    base = merged["hh"] if merged["hh"] is not None else merged["hv"]
+    coverage = round(100.0 * float(np.isfinite(base).mean()), 1) if base is not None else 0.0
+    epsgs = sorted({s["epsg"] for s in subsets if s.get("epsg") is not None})
+    spacings = [s["native_spacing_m"] for s in subsets if s.get("native_spacing_m") is not None]
+    pols = sorted({p for s in subsets for p in (s.get("polarizations") or [])})
+    merged.update({
+        "epsg": epsgs,
+        "native_spacing_m": min(spacings) if spacings else None,
+        "identification": subsets[0].get("identification"),
+        "polarizations": pols,
+        "synthetic": any(bool(s.get("synthetic")) for s in subsets),
+        "coverage_pct": coverage,
+        "frames": [{"coverage_pct": s.get("coverage_pct"), "epsg": s.get("epsg"),
+                    "polarizations": s.get("polarizations")} for s in subsets],
+    })
+    return merged
