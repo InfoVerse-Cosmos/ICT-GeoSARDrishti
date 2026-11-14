@@ -34,3 +34,4 @@ scripts/_work/
 # Agent / workflow scratch dirs
 .agents/
 .worktrees/
+Docs/
