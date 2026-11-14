@@ -1,0 +1,21 @@
+# GeoSAR Drishti — deployment compose (InfoVerse Cosmos).
+# Backend ONLY. The frontend is a static Vite build served directly by host nginx.
+# Project name: geosardrishti   (keep isolated from the `geosar` and Cairo stacks)
+#
+# Backend binds to 127.0.0.1:8091 — reachable only via nginx on localhost, never public.
+services:
+  backend:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    image: geosardrishti-backend
+    container_name: geosardrishti-backend
+    restart: unless-stopped
+    environment:
+      PORT: "8000"
+      # Same-origin requests don't trigger CORS, but set the real origin anyway.
+      CORS_ORIGINS: "https://geosardrishti.infoversecosmostech.com"
+      EARTHDATA_TOKEN: ""          # blank -> deterministic cached/demo mode (no live NASA pull)
+      EXTERNAL_TIMEOUT_SECONDS: "3.5"
+    ports:
+      - "127.0.0.1:8091:8000"      # localhost only
