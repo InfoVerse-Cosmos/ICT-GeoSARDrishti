@@ -74,5 +74,25 @@ class DataStore:
     def aoi_dir(self, aoi_id: str) -> Path:
         return DATA_STORE / aoi_id
 
+    def has_cube(self, aoi_id: str) -> bool:
+        return (self.aoi_dir(aoi_id) / "time_series_cube.npz").is_file()
+
+    def pack_status(self, aoi_id: str) -> dict[str, Any]:
+        """What the offline pipeline has produced for this AOI (shown in /health)."""
+        d = self.aoi_dir(aoi_id)
+        m = self._manifests.get(aoi_id, {})
+        overlays = sorted(p.name for p in (d / "overlays").glob("*.png")) if (d / "overlays").is_dir() else []
+        locked = [t for t in m.get("timeline", []) if t.get("granule_id") not in (None, "TBD")]
+        return {
+            "granules_locked": len(locked),
+            "timeline_dates": len(m.get("timeline", [])),
+            "cube": self.has_cube(aoi_id),
+            "overlays": len(overlays),
+            "exposure": (d / "osm_exposure.geojson").is_file(),
+            "context_layers": (d / "context_layers.geojson").is_file(),
+            "fallback_plan": m.get("fallback_plan"),
+            "synthetic_test_data": bool(m.get("synthetic_test_data", False)),
+        }
+
 
 store = DataStore()

@@ -1,5 +1,7 @@
-"""AOI metadata + timeline endpoints (SRS §7.1)."""
+"""AOI metadata + timeline + provenance + regional context endpoints (SRS §3.1, §7.1)."""
 from __future__ import annotations
+
+import json
 
 from fastapi import APIRouter
 
@@ -44,9 +46,14 @@ def timeline(aoi_id: str) -> dict:
         {
             "aoi_id": aoi_id,
             "polarization": manifest.get("polarization", "HH+HV"),
+            "single_pol_mode": bool(manifest.get("single_pol_mode", False)),
             "track_frame": manifest.get("track_frame"),
             "fallback_plan": manifest.get("fallback_plan", "A"),
+            "reference_date": manifest.get("reference_date"),
             "acquisition_gaps": manifest.get("acquisition_gaps", ["2026-07-27/2026-08-10"]),
+            "synthetic_test_data": bool(manifest.get("synthetic_test_data", False)),
+            "season_summary": manifest.get("season_summary"),
+            "data_pack_ready": store.has_cube(aoi_id),
             "timeline": manifest.get("timeline", []),
         },
         aoi_id=aoi_id,
@@ -65,6 +72,18 @@ def provenance(aoi_id: str) -> dict:
     return envelope(
         {
             "aoi_id": aoi_id,
+            "track_frame": manifest.get("track_frame"),
+            "fallback_plan": manifest.get("fallback_plan"),
+            "reference_date": prov.get("reference_date") or manifest.get("reference_date"),
+            "synthetic_test_data": bool(manifest.get("synthetic_test_data", False)),
+            "calibration_check": prov.get("calibration_check"),
+            "masks": prov.get("masks"),
+            "gmm": prov.get("gmm"),
+            "jrc": prov.get("jrc"),
+            "opera_dswx": prov.get("opera_dswx"),
+            "exposure": prov.get("exposure"),
+            "processing": prov.get("processing"),
+            "context_sources": prov.get("context_sources", []),
             "granules": prov.get("granules", []),
             "otsu_thresholds": prov.get("otsu_thresholds", {}),
             "delta_hh_params": prov.get("delta_hh_params", {"min_delta_hh_db": 3.0, "min_delta_ratio_db": 1.5}),
@@ -81,3 +100,32 @@ def provenance(aoi_id: str) -> dict:
         },
         aoi_id=aoi_id,
     )
+
+
+@router.get("/aois/{aoi_id}/context")
+def context_layers(aoi_id: str) -> dict:
+    """Official regional context (e.g. GSDA/CGWB watersheds & aquifers for Nagpur, SRS §3.1).
+
+    Context only — groundwater is NEVER presented as a direct SAR detection.
+    """
+    manifest = store.get(aoi_id)
+    if manifest is None:
+        return envelope(None, aoi_id=aoi_id, status="unknown_aoi", fallback_active=True,
+                        warning=f"Unknown AOI '{aoi_id}'.")
+    note = "Official hydrogeological / watershed context — not a SAR detection."
+    path = store.aoi_dir(aoi_id) / "context_layers.geojson"
+    sources = manifest.get("provenance", {}).get("context_sources", [])
+    if not path.is_file():
+        return envelope(
+            {"geojson": {"type": "FeatureCollection", "features": []}, "sources": sources, "note": note},
+            aoi_id=aoi_id, fallback_active=True,
+            warning="No context_layers.geojson in this AOI pack (export GSDA/CGWB layers to add it).",
+        )
+    try:
+        fc = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return envelope(
+            {"geojson": {"type": "FeatureCollection", "features": []}, "sources": sources, "note": note},
+            aoi_id=aoi_id, fallback_active=True, warning="context_layers.geojson is not valid JSON.",
+        )
+    return envelope({"geojson": fc, "sources": sources, "note": note}, aoi_id=aoi_id)
