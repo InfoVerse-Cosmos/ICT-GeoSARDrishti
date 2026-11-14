@@ -86,6 +86,17 @@ def test_data_gate_drops_granules_outside_the_aoi(h5_dir):
     assert gs and all(g.get("skipped") for g in gs)
 
 
+def test_data_gate_skips_truncated_granule(tmp_path):
+    # A valid NISAR name but not valid HDF5 (e.g. a half-finished download) must be
+    # skipped with a warning, not crash the gate (regression for the truncated-file OSError).
+    name = ("NISAR_L2_PR_GCOV_029_149_D_075_2005_DHDH_M_"
+            "20260904T130705_20260904T130739_P05023_N_F_J_001.h5")
+    (tmp_path / name).write_bytes(b"\x89HDF\r\n\x1a\n not a real hdf5 file")
+    gs = data_gate.granules_from_dir(tmp_path, "aoi_assam_majuli")
+    assert len(gs) == 1
+    assert gs[0].get("skipped") == "unreadable or truncated granule"
+
+
 # ------------------------------------------------------------------ 02 classify + hydroperiod
 def test_manifest_is_locked_with_real_granule_ids(processed):
     assert processed["track_frame"] == "135/076"
