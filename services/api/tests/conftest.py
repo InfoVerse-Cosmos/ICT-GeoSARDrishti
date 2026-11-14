@@ -49,6 +49,14 @@ def client():
 
 
 @pytest.fixture(autouse=True)
+def _reset_llm_state():
+    from app.services import evidence_narrator
+    evidence_narrator._NARRATION_CACHE.clear()
+    evidence_narrator._cooldown_until.clear()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _clear_cube_cache():
     raster_sampler._load_cube.cache_clear()
     yield

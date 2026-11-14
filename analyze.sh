@@ -14,6 +14,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="$ROOT/DATA"
+# .env (GEOSAR_DATA_DIR) can point at a folder on another drive / mount
+DATA_DIR="$(python3 "$ROOT/scripts/print_data_dir.py" 2>/dev/null || echo "$DATA_DIR")"
 PVENV="$ROOT/scripts/.venv"
 
 note() { printf "\033[36m[analyze]\033[0m %s\n" "$*"; }
@@ -29,7 +31,7 @@ if [[ ${#granules[@]} -eq 0 ]]; then
   err "copy them into the DATA/ folder, then run ./analyze.sh again. See DATA/README.md."
   exit 1
 fi
-note "Found ${#granules[@]} granule(s) in DATA/."
+note "Found ${#granules[@]} granule(s) in $DATA_DIR"
 
 # --- 2. processing environment ----------------------------------------------
 PYBIN="$(command -v python3.11 || command -v python3 || true)"
@@ -51,10 +53,12 @@ fi
 pip install --quiet scikit-learn || note "scikit-learn unavailable — GMM regimes will be skipped."
 
 # --- 3. build the pack from your data ---------------------------------------
-AOI_ID="${AOI_ID:-aoi_my_data}"
-AOI_NAME="${AOI_NAME:-My Area}"
+# No AOI_ID/AOI_NAME needed: each track/frame stack in the folder becomes its own area automatically.
+EXTRA=()
+[[ -n "${AOI_ID:-}" ]] && EXTRA+=(--aoi-id "$AOI_ID")
+[[ -n "${AOI_NAME:-}" ]] && EXTRA+=(--name "$AOI_NAME")
 note "Building the analysis pack (area auto-detected from the granules)…"
-python "$ROOT/scripts/byod_build_aoi.py" --aoi-id "$AOI_ID" --name "$AOI_NAME" --with-regimes
+python "$ROOT/scripts/byod_build_aoi.py" ${EXTRA[@]+"${EXTRA[@]}"} --with-regimes --with-osm
 deactivate || true
 
 # --- 4. start the app -------------------------------------------------------

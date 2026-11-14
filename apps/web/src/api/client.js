@@ -49,22 +49,33 @@ export async function loadFallbackManifest() {
   }
 }
 
+// No area selected yet (AOI list still loading, or no data analysed): never call /aois//x.
+const NO_AOI = { ...EMPTY_ENVELOPE, status: "no_aoi", source_mode: "NONE", fallback_active: false, warning: null };
+const forAoi = (aoiId, call) => (aoiId ? call() : Promise.resolve(NO_AOI));
+
 export const api = {
   base: API_BASE,
   health: () => request("/health"),
   listAois: () => request("/aois"),
-  timeline: (aoiId) => request(`/aois/${aoiId}/timeline`),
+  timeline: (aoiId) => forAoi(aoiId, () => request(`/aois/${aoiId}/timeline`)),
   earthdataLive: (bbox, aoiId) =>
     request(
       `/nisar/earthdata-live?bbox=${encodeURIComponent(bbox)}${aoiId ? `&aoi_id=${encodeURIComponent(aoiId)}` : ""}`,
       { timeoutMs: 8000, retries: 0 },
     ),
-  context: (aoiId) => request(`/aois/${aoiId}/context`),
+  context: (aoiId) => forAoi(aoiId, () => request(`/aois/${aoiId}/context`)),
   layerPngUrl: (aoiId, layerId, date) =>
     `${API_V1}/layers/${aoiId}/${layerId}.png${date ? `?date=${date}` : ""}`,
-  inspect: (aoiId, lat, lon) => request(`/aois/${aoiId}/inspect?lat=${lat}&lon=${lon}`),
-  evidenceCard: (payload) => request("/evidence-card", { method: "POST", body: payload, timeoutMs: 4000 }),
-  exposure: (aoiId) => request(`/aois/${aoiId}/exposure`),
-  provenance: (aoiId) => request(`/aois/${aoiId}/provenance`),
-  report: (aoiId) => request(`/aois/${aoiId}/report`),
+  inspect: (aoiId, lat, lon) => forAoi(aoiId, () => request(`/aois/${aoiId}/inspect?lat=${lat}&lon=${lon}`)),
+  // narrate:false = instant deterministic card; narrate:true = same card + optional LLM wording (slower).
+  evidenceCard: (payload, { narrate = false } = {}) =>
+    request("/evidence-card", {
+      method: "POST",
+      body: { ...payload, narrate },
+      timeoutMs: narrate ? 14000 : 4000,
+      retries: narrate ? 0 : 1,
+    }),
+  exposure: (aoiId) => forAoi(aoiId, () => request(`/aois/${aoiId}/exposure`)),
+  provenance: (aoiId) => forAoi(aoiId, () => request(`/aois/${aoiId}/provenance`)),
+  report: (aoiId) => forAoi(aoiId, () => request(`/aois/${aoiId}/report`)),
 };

@@ -13,6 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
+from . import envcfg
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_STORE = REPO_ROOT / "services" / "api" / "data_store"
 WORK_DIR = REPO_ROOT / "scripts" / "_work"
@@ -21,6 +23,31 @@ AOI_BOUNDS = {  # [west, south, east, north] WGS84 (SRS §3.1)
     "aoi_assam_majuli": [93.90, 26.75, 94.30, 27.05],
     "aoi_nagpur_kanhan": [78.95, 21.15, 79.35, 21.45],
 }
+
+# Well-known demo areas: when a granule stack covers one of these, the pack gets the curated id / name /
+# bbox so results are comparable run to run. Any other area is auto-detected from the granule footprints.
+KNOWN_AREAS = {
+    "aoi_assam_majuli": {"name": "Majuli-Kaziranga Floodplain, Brahmaputra Valley, Assam",
+                         "role": "Primary CH-06 Monsoon Time-Series Showcase", "zoom": 9,
+                         "bounds": [93.90, 26.75, 94.30, 27.05]},
+    "aoi_nagpur_kanhan": {"name": "Kanhan-Pench / Wainganga Corridor, Nagpur District, Maharashtra",
+                          "role": "Local Watershed & Multi-Source Context Showcase", "zoom": 9,
+                          "bounds": [78.95, 21.15, 79.35, 21.45]},
+    "aoi_gujarat_kutch": {"name": "Rann of Kutch / Banni, Gujarat",
+                          "role": "NISAR GCOV dual-track hydroperiod (Gujarat / Rann of Kutch)", "zoom": 7,
+                          "bounds": [68.95, 23.44, 74.10, 26.18]},
+}
+
+
+def match_known_area(footprint):
+    """Known area whose centre lies inside the granule footprint [w,s,e,n] (None if no match)."""
+    for aoi_id, k in KNOWN_AREAS.items():
+        w, s_, e, n = k["bounds"]
+        cx, cy = (w + e) / 2, (s_ + n) / 2
+        if footprint[0] <= cx <= footprint[2] and footprint[1] <= cy <= footprint[3]:
+            return aoi_id
+    return None
+
 
 # --- SRS physics constants (§2, §5.2, §5.5) ---------------------------------
 MIN_DELTA_HH_DB = 3.0
@@ -57,7 +84,7 @@ REGIME_NAMES = [
 
 
 def data_store(override: str | Path | None = None) -> Path:
-    return Path(override or os.environ.get("GEOSAR_DATA_STORE") or DEFAULT_DATA_STORE)
+    return Path(override or envcfg.get("GEOSAR_DATA_STORE") or DEFAULT_DATA_STORE).expanduser()
 
 
 def now_iso() -> str:

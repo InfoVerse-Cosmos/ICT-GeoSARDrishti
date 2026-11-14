@@ -133,8 +133,13 @@ export default function MapWorkspace({ onPixelInspected }) {
       const res = await api.inspect(aoiId, lat.toFixed(5), lng.toFixed(5));
       setClickedPixel({ ...(res.data || {}), lat, lon: lng, status: res.status, warning: res.warning });
       if (res.status === "ok") {
-        const card = await api.evidenceCard({ aoi_id: res.aoi_id, lat, lon: lng, telemetry: res.data });
+        const payload = { aoi_id: res.aoi_id, lat, lon: lng, telemetry: res.data };
+        // 1) instant deterministic card, 2) upgrade with the LLM wording if/when it arrives
+        const card = await api.evidenceCard(payload);
         setEvidenceCard(card.data?.card || null);
+        const llm = await api.evidenceCard(payload, { narrate: true });
+        const stillSame = useMissionStore.getState().clickedPixel?.lat === lat;
+        if (stillSame && llm.data?.card?.mode === "llm_grounded") setEvidenceCard(llm.data.card);
       }
     });
     mapRef.current = map;

@@ -23,7 +23,8 @@ export default function ProvenanceModal({ open, onClose }) {
   const checkLive = async () => {
     setLiveLoading(true);
     const bounds = aois.find((a) => a.aoi_id === activeAoiId)?.bounds;
-    const res = await api.earthdataLive((bounds || [93.9, 26.75, 94.3, 27.05]).join(","), activeAoiId);
+    if (!bounds) return;
+    const res = await api.earthdataLive(bounds.join(","), activeAoiId);
     setLive(res);
     setLiveLoading(false);
   };

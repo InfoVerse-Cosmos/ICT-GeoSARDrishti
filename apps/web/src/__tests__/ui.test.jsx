@@ -22,8 +22,18 @@ afterEach(cleanup);
 
 // ------------------------------------------------------------ store
 describe("mission store", () => {
-  it("defaults to the Assam primary AOI", () => {
-    expect(useMissionStore.getState().activeAoiId).toBe("aoi_assam_majuli");
+  it("has no hardcoded area: selection comes from the AOIs the API serves", () => {
+    expect(useMissionStore.getState().activeAoiId).toBe("");
+    useMissionStore.getState().setAois([{ aoi_id: "aoi_a" }, { aoi_id: "aoi_b" }]);
+    expect(useMissionStore.getState().activeAoiId).toBe("aoi_a");
+    useMissionStore.getState().setActiveAoi("aoi_b");
+    useMissionStore.getState().setAois([{ aoi_id: "aoi_a" }, { aoi_id: "aoi_b" }]);
+    expect(useMissionStore.getState().activeAoiId).toBe("aoi_b"); // valid selection kept
+    useMissionStore.getState().setAois([{ aoi_id: "aoi_c" }]);
+    expect(useMissionStore.getState().activeAoiId).toBe("aoi_c"); // vanished area replaced
+    useMissionStore.getState().setAois([]);
+    expect(useMissionStore.getState().activeAoiId).toBe("");      // no data -> nothing selected
+    useMissionStore.setState({ aois: [], activeAoiId: "" });
     expect(useMissionStore.getState().connection).toBe("CONNECTING");
   });
 

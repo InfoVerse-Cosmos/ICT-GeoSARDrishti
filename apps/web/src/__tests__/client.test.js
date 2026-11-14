@@ -92,7 +92,9 @@ describe("api client", () => {
     const [, opts] = fetch.mock.calls[0];
     expect(opts.method).toBe("POST");
     expect(opts.headers["Content-Type"]).toBe("application/json");
-    expect(JSON.parse(opts.body)).toEqual(payload);
+    expect(JSON.parse(opts.body)).toEqual({ ...payload, narrate: false }); // instant card by default
+    await api.evidenceCard(payload, { narrate: true });
+    expect(JSON.parse(fetch.mock.calls[1][1].body).narrate).toBe(true);     // second call asks for the LLM wording
   });
 });
 

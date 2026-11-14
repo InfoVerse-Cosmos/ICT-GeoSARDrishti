@@ -23,8 +23,30 @@ function metaFrom(src) {
   return Object.fromEntries(keys.filter((k) => k in src).map((k) => [k, src[k]]));
 }
 
+// Shown when the backend has no analysed NISAR data yet: tells a first-time user exactly what to do.
+function NoDataState() {
+  return (
+    <div className="flex flex-1 items-center justify-center p-6" role="status">
+      <div className="max-w-xl rounded border border-grid bg-panel p-6">
+        <h2 className="telemetry-mono text-base text-cyan">No NISAR data analysed yet</h2>
+        <p className="mt-2 text-sm text-slate-300">
+          This app only shows areas you have real satellite data for. Nothing is pre-loaded or simulated.
+        </p>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-300">
+          <li>Copy your NISAR L2 GCOV <code className="text-cyan">.h5</code> files into the <code className="text-cyan">DATA/</code> folder.</li>
+          <li>Run <code className="text-cyan">analyze.bat</code> (Windows) or <code className="text-cyan">./analyze.sh</code> (macOS / Linux).</li>
+          <li>Refresh this page. Your area appears in the selector at the top.</li>
+        </ol>
+        <p className="mt-4 text-xs text-slate-500">
+          Short on disk space? Set <code>GEOSAR_DATA_DIR</code> / <code>GEOSAR_DATA_STORE</code> in <code>services/api/.env</code> to a bigger drive.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  const { activeAoiId, connection, audienceMode, setAois, setTimeline, setConnection, setFallbackActive } =
+  const { aois, activeAoiId, connection, audienceMode, setAois, setTimeline, setConnection, setFallbackActive } =
     useMissionStore();
   const simple = audienceMode === "simple";
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
@@ -71,6 +93,7 @@ export default function App() {
 
   // Load timeline whenever the AOI (or connection mode) changes.
   useEffect(() => {
+    if (!activeAoiId) return;
     (async () => {
       if (connection === "OFFLINE" && offlineMirror.current) {
         const a = (offlineMirror.current.aois || []).find((x) => x.aoi_id === activeAoiId);
@@ -104,6 +127,9 @@ export default function App() {
         </div>
       )}
 
+      {aois.length === 0 && !uplink.establishing ? (
+        <NoDataState />
+      ) : (
       <div className="flex min-h-0 flex-1">
         {/* Center: map + time slider */}
         <main className="flex min-w-0 flex-1 flex-col">
@@ -152,6 +178,7 @@ export default function App() {
           )}
         </aside>
       </div>
+      )}
 
       <ProvenanceModal open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />

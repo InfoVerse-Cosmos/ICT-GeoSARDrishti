@@ -52,7 +52,7 @@ const INITIAL_AUDIENCE = readAudience();
 export const useMissionStore = create((set) => ({
   aois: [],
   audienceMode: INITIAL_AUDIENCE, // simple | scientist
-  activeAoiId: "aoi_assam_majuli",
+  activeAoiId: "", // set from the AOI list the API actually serves (never a hardcoded area)
   timeline: [],
   timelineMeta: EMPTY_META,
   activeDate: null,
@@ -71,7 +71,12 @@ export const useMissionStore = create((set) => ({
   connection: "CONNECTING", // LIVE_API | LOCAL_CACHE | OFFLINE | CONNECTING
   fallbackActive: false,
 
-  setAois: (aois) => set({ aois }),
+  // Only areas the backend really has data for are listed; keep the selection valid.
+  setAois: (aois) =>
+    set((s) => ({
+      aois,
+      activeAoiId: aois.some((a) => a.aoi_id === s.activeAoiId) ? s.activeAoiId : aois[0]?.aoi_id ?? "",
+    })),
   // Switching audience also swaps the default basemap and resets Simple mode to a
   // plain result layer so a layman never lands on a scientist-only overlay.
   setAudienceMode: (audienceMode) =>
