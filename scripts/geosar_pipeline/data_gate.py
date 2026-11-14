@@ -40,6 +40,27 @@ def granules_from_dir(h5_dir: str | Path, aoi_id: str | None = None, check_footp
     return out
 
 
+def granules_from_dirs(dirs, aoi_id: str | None = None, check_footprint: bool = True) -> list[dict]:
+    """Union of granules_from_dir over several folders, de-duplicated by resolved path and
+    granule_id (so the repo-root DATA/ and an extra-frames subfolder can be fed together
+    without double-counting). granules_from_dir and lock are unchanged."""
+    seen_paths: set[str] = set()
+    seen_ids: set[str] = set()
+    out: list[dict] = []
+    for d in dirs:
+        for g in granules_from_dir(d, aoi_id, check_footprint):
+            rp = str(Path(g["path"]).resolve()) if g.get("path") else None
+            gid = g.get("granule_id")
+            if (rp is not None and rp in seen_paths) or (gid is not None and gid in seen_ids):
+                continue
+            if rp is not None:
+                seen_paths.add(rp)
+            if gid is not None:
+                seen_ids.add(gid)
+            out.append(g)
+    return out
+
+
 def granules_from_earthaccess(aoi_id: str, short_name: str, temporal=("2026-06-01", "2026-11-30")) -> list[dict]:
     """Live CMR search via earthaccess (needs EARTHDATA_USERNAME/PASSWORD or ~/.netrc)."""
     import earthaccess

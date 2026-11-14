@@ -136,8 +136,12 @@ def main() -> int:
     p.add_argument("--name", help="human-readable AOI name shown in the app selector (default: from --aoi-id)")
     p.add_argument("--bbox", type=parse_bbox,
                    help="west,south,east,north (WGS84); default: auto-detected from the granule footprints")
-    p.add_argument("--h5-dir", default=str(common.REPO_ROOT / "DATA"),
-                   help="folder holding your NISAR GCOV .h5 granules (default: the repo-root DATA/ folder)")
+    p.add_argument("--h5-dir", action="append", metavar="DIR",
+                   help="folder holding your NISAR GCOV .h5 granules (default: the repo-root DATA/ folder). "
+                        "Repeatable — pass it several times to feed adjacent frames from more than one folder.")
+    p.add_argument("--mosaic", action="store_true",
+                   help="composite same-track, same-date granules across adjacent frames onto the AOI grid "
+                        "(linear-power union) instead of selecting a single track/frame stack")
     p.add_argument("--track-frame", help="force a track/frame (default: longest same-track stack)")
     p.add_argument("--ref-date", help="dry reference date YYYY-MM-DD (default: latest acquisition)")
     p.add_argument("--res-m", type=float, default=None,
@@ -162,17 +166,24 @@ def main() -> int:
         p.error("--aoi-id must contain only lowercase letters, digits and underscores")
 
     store = common.data_store(args.data_store)
-    h5_dir = Path(args.h5_dir).expanduser()
-    if not h5_dir.is_dir():
-        p.error(
-            f"granule folder not found: {h5_dir}\n"
-            "       Put your NISAR L2 GCOV .h5 granules in the repo-root DATA/ folder "
-            "(or pass --h5-dir). See DATA/README.md."
-        )
-    h5_files = sorted(h5_dir.glob("*.h5"))
+    # argparse append cannot carry a mutable default safely, so default here when nothing was passed.
+    h5_dir_args = args.h5_dir or [str(common.REPO_ROOT / "DATA")]
+    h5_dirs = []
+    for d in h5_dir_args:
+        hd = Path(d).expanduser()
+        if not hd.is_dir():
+            p.error(
+                f"granule folder not found: {hd}\n"
+                "       Put your NISAR L2 GCOV .h5 granules in the repo-root DATA/ folder "
+                "(or pass --h5-dir). See DATA/README.md."
+            )
+        h5_dirs.append(hd)
+    h5_files = []
+    for hd in h5_dirs:
+        h5_files.extend(sorted(hd.glob("*.h5")))   # non-recursive per dir (avoids _prev_* / nested dupes)
     if not h5_files:
         p.error(
-            f"no NISAR .h5 granules found in {h5_dir}\n"
+            f"no NISAR .h5 granules found in {', '.join(str(d) for d in h5_dirs)}\n"
             "       Download NISAR L2 GCOV granules for your area from NASA Earthdata/ASF or "
             "ISRO Bhoonidhi (your responsibility), drop the .h5 files into DATA/, and run again."
         )
@@ -203,8 +214,8 @@ def main() -> int:
     print(f"[byod] AOI {aoi_id} '{manifest['name']}' bbox={bbox} -> {store}")
 
     # ---- stage 02: classify + hydroperiod (required) --------------------------------
-    manifest = process.run(aoi_id, h5_dir, store, track_frame=args.track_frame, ref_date=args.ref_date,
-                           res_m=res_m, worldcover=args.worldcover, dem=args.dem)
+    manifest = process.run(aoi_id, h5_dirs, store, track_frame=args.track_frame, ref_date=args.ref_date,
+                           res_m=res_m, worldcover=args.worldcover, dem=args.dem, mosaic=args.mosaic)
     print(f"[byod] stage 02 done · plan {manifest.get('fallback_plan')} · "
           f"{len(manifest.get('timeline', []))} dates · track {manifest.get('track_frame')}")
     for t in manifest.get("timeline", []):
