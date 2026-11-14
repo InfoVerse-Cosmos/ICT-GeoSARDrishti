@@ -424,6 +424,8 @@ export default function MapWorkspace({ onPixelInspected }) {
         </>}
       </div>
 
+      {/* Simple legend floats on the map (must live INSIDE the relative map box, or it covers the header). */}
+      {simple && <Legend layer={renderedLayer} simple />}
       </div>
       {/* Basemap switcher stays outside the map controls and attribution. */}
       {!simple && <div className="flex flex-wrap gap-1 border-t border-grid bg-panel p-2 text-xs telemetry-mono">
@@ -441,7 +443,7 @@ export default function MapWorkspace({ onPixelInspected }) {
           </button>
         ))}
       </div>}
-      <Legend layer={renderedLayer} simple={simple} />
+      {!simple && <Legend layer={renderedLayer} />}
     </div>
   );
 }
