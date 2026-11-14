@@ -2,7 +2,7 @@ import { useMissionStore } from "@/store/useMissionStore.js";
 
 // Top Mission Bar (SRS §4.2.1): NISAR identity, dual-AOI selector, status pills.
 export default function TopTelemetryBar({ onOpenProvenance }) {
-  const { aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive, timelineMeta } =
+  const { aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive, timelineMeta, audienceMode, setAudienceMode } =
     useMissionStore();
 
   const current = timeline.find((t) => t.date === activeDate) || timeline[timeline.length - 1];
@@ -16,6 +16,9 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
         <span className="telemetry-mono text-sm font-semibold text-cyan">NISAR · GeoSAR Drishti</span>
       </div>
 
+      <div className="flex gap-1" role="group" aria-label="Audience mode">
+        {["simple", "scientific"].map((mode) => <button key={mode} aria-pressed={audienceMode === mode} onClick={() => setAudienceMode(mode)} className={`rounded border px-2 py-1 text-xs ${audienceMode === mode ? "border-cyan font-bold text-cyan" : "border-grid text-slate-300"}`}>{mode === "simple" ? "Simple" : "Scientific"}</button>)}
+      </div>
       {/* Dual-AOI selector */}
       <select
         aria-label="Area of interest"
@@ -31,17 +34,19 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
       </select>
 
       <div className="flex flex-1 flex-wrap items-center gap-2 text-[11px] telemetry-mono">
+        {audienceMode === "scientific" && <>
         <Pill
           label={current?.granule_id ? `GRANULE ${shortGranule(current.granule_id)}` : "GRANULE —"}
           title={current?.granule_id}
         />
         <Pill label={current?.track_frame ? `T/F ${current.track_frame}` : "T/F —"} />
         <Pill label={singlePol ? "SINGLE-POL HH" : pol} tone={singlePol ? "isro" : "nasa"} />
+        </>}
         <Pill
           label={current?.maturity || "PROVISIONAL"}
           tone={current?.maturity === "VALIDATED" ? "cyan" : "isro"}
         />
-        {timelineMeta.fallback_plan && <Pill label={`PLAN ${timelineMeta.fallback_plan}`} title="SRS §3.3 fallback ladder" />}
+        {audienceMode === "scientific" && timelineMeta.fallback_plan && <Pill label={`PLAN ${timelineMeta.fallback_plan}`} title="SRS §3.3 fallback ladder" />}
         {timelineMeta.synthetic_test_data && <Pill label="SYNTHETIC TEST DATA" tone="alert" />}
       </div>
 

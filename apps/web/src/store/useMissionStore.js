@@ -30,6 +30,9 @@ export const EMPTY_META = {
 };
 
 export const useMissionStore = create((set) => ({
+  audienceMode: "simple",
+  layerOpacity: 0.85,
+  evidenceLoading: false,
   aois: [],
   activeAoiId: "aoi_assam_majuli",
   timeline: [],
@@ -39,7 +42,7 @@ export const useMissionStore = create((set) => ({
   compareMix: 0.5, // 0 = only "before", 1 = only "after"
   activeLayer: "open_water",
   showExposure: true,
-  basemap: "dark", // dark | satellite | street | terrain | nasa
+  basemap: "satellite", // dark | satellite | street | terrain | nasa
   clickedPixel: null, // { lat, lon, ...telemetry }
   evidenceCard: null,
   exposure: null, // { geojson, ranked, ... }
@@ -48,9 +51,12 @@ export const useMissionStore = create((set) => ({
   connection: "CONNECTING", // LIVE_API | LOCAL_CACHE | OFFLINE | CONNECTING
   fallbackActive: false,
 
+  setAudienceMode: (audienceMode) => set({ audienceMode, basemap: audienceMode === "simple" ? "satellite" : "dark", activeLayer: "open_water", compareDate: null }),
+  setLayerOpacity: (layerOpacity) => set({ layerOpacity }),
+  setEvidenceLoading: (evidenceLoading) => set({ evidenceLoading }),
   setAois: (aois) => set({ aois }),
   setActiveAoi: (activeAoiId) =>
-    set({ activeAoiId, clickedPixel: null, evidenceCard: null, exposure: null, compareDate: null, playing: false }),
+    set({ activeAoiId, evidenceLoading: false, clickedPixel: null, evidenceCard: null, exposure: null, compareDate: null, playing: false }),
   setTimeline: (timeline, meta = {}) =>
     set({
       timeline,

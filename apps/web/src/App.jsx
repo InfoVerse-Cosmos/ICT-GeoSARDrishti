@@ -10,6 +10,9 @@ import ExposureTable from "@/components/ExposureTable.jsx";
 import ProvenanceModal from "@/components/ProvenanceModal.jsx";
 import ScenePanel from "@/components/ScenePanel.jsx";
 
+import ErrorBoundary from "@/components/ErrorBoundary.jsx";
+import SimpleSummary from "@/components/SimpleSummary.jsx";
+
 const RETRY_MS = 5000;
 
 function metaFrom(src) {
@@ -21,8 +24,9 @@ function metaFrom(src) {
   return Object.fromEntries(keys.filter((k) => k in src).map((k) => [k, src[k]]));
 }
 
-export default function App() {
-  const { activeAoiId, connection, setAois, setTimeline, setConnection, setFallbackActive } = useMissionStore();
+function MissionApp() {
+  const { audienceMode, activeAoiId, connection, setAois, setTimeline, setConnection, setFallbackActive } = useMissionStore();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
   const [provenanceOpen, setProvenanceOpen] = useState(false);
   const [uplink, setUplink] = useState({ establishing: true, attempt: 0 });
@@ -32,10 +36,10 @@ export default function App() {
   // banner, serve the bundled offline mirror, and keep retrying (SRS §7.2 rule 3).
   const boot = useCallback(async () => {
     const health = await api.health();
-    if (health.status === "unavailable") {
+    if (health.status === "unavailable" || health.source_mode === "CLIENT_FALLBACK") {
       if (!offlineMirror.current) offlineMirror.current = await loadFallbackManifest();
+      setConnection("OFFLINE");
       if (offlineMirror.current) {
-        setConnection("OFFLINE");
         setAois(offlineMirror.current.aois || []);
       }
       setUplink((u) => ({ establishing: true, attempt: u.attempt + 1 }));
@@ -79,7 +83,7 @@ export default function App() {
   }, [activeAoiId, connection, setTimeline]);
 
   return (
-    <div className="flex h-full flex-col bg-orbital text-slate-200">
+    <div className="flex min-h-full lg:h-full flex-col bg-orbital text-slate-200">
       <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} />
       {uplink.establishing && (
         <div
@@ -96,35 +100,40 @@ export default function App() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
+      {audienceMode === "simple" && <SimpleSummary compact />}
+      <button className="border-b border-grid px-4 py-2 text-left text-sm lg:hidden" aria-expanded={drawerOpen} aria-controls="mission-drawer" onClick={() => setDrawerOpen(!drawerOpen)}>{drawerOpen ? "Close details" : "Open details"}</button>
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Center: map + time slider */}
         <main className="flex min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1">
-            <MapWorkspace onPixelInspected={() => setTab("trajectory")} />
+          <div className="min-h-[420px] flex-1 lg:min-h-0">
+            <MapWorkspace onPixelInspected={() => { setTab("trajectory"); setDrawerOpen(true); }} />
           </div>
           <MonsoonTimeSlider />
         </main>
 
         {/* Right telemetry & evidence drawer */}
-        <aside className="flex w-[400px] flex-col border-l border-grid bg-panel">
-          <nav className="flex border-b border-grid text-xs telemetry-mono">
+        <aside id="mission-drawer" className={`${drawerOpen ? "flex" : "hidden"} max-h-[65vh] w-full shrink-0 flex-col border-t border-grid bg-panel lg:flex lg:max-h-none lg:w-[360px] lg:border-l lg:border-t-0 xl:w-[420px]`}>
+          {audienceMode === "scientific" && <nav className="flex border-b border-grid text-xs telemetry-mono">
             {[
               ["metrics", "SCENE & VALIDATION"],
               ["trajectory", "PIXEL TRAJECTORY"],
               ["exposure", "INSPECTION LOG"],
             ].map(([id, label]) => (
               <button
+                aria-pressed={tab === id}
                 key={id}
                 onClick={() => setTab(id)}
                 className={`flex-1 px-3 py-2 ${
-                  tab === id ? "bg-nasa/30 text-cyan" : "text-slate-400 hover:text-slate-200"
+                  tab === id ? "border-b-2 border-cyan bg-nasa/30 font-bold text-cyan" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
                 {label}
               </button>
             ))}
-          </nav>
+          </nav>}
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <ErrorBoundary key={`${audienceMode}-${tab}`} >
+            {audienceMode === "simple" ? <SimpleSummary /> : <>
             {tab === "metrics" && <ScenePanel />}
             {tab === "trajectory" && (
               <>
@@ -133,6 +142,8 @@ export default function App() {
               </>
             )}
             {tab === "exposure" && <ExposureTable />}
+            </>}
+            </ErrorBoundary>
           </div>
         </aside>
       </div>
@@ -141,3 +152,5 @@ export default function App() {
     </div>
   );
 }
+
+export default function App() { return <ErrorBoundary><MissionApp /></ErrorBoundary>; }

@@ -12,12 +12,13 @@ export default function PixelTrajectoryChart() {
 
   if (!clickedPixel) {
     return (
-      <p className="mb-3 telemetry-mono text-xs text-slate-500">
+      <p className="mb-3 telemetry-mono text-xs text-slate-400">
         Click inside the cyan AOI boundary to plot its HH/HV dB trajectory.
       </p>
     );
   }
-  if (clickedPixel.status === "outside_aoi" || clickedPixel.status === "loading") return null;
+  if (clickedPixel.status === "loading") return <div role="status" className="mb-3 h-48 animate-pulse rounded bg-grid p-3 text-sm">Loading pixel trajectory...</div>;
+  if (clickedPixel.status === "outside_aoi") return null;
 
   const dates = clickedPixel.dates || [];
   const classes = clickedPixel.classes || [];
@@ -35,7 +36,7 @@ export default function PixelTrajectoryChart() {
 
   return (
     <div className="mb-3">
-      <div className="mb-1 flex items-center justify-between telemetry-mono text-[11px] text-slate-400">
+      <div className="mb-1 flex items-center justify-between telemetry-mono text-xs text-slate-400">
         <span>
           {clickedPixel.lat?.toFixed(4)}°, {clickedPixel.lon?.toFixed(4)}° · γ⁰ (dB)
         </span>
@@ -61,9 +62,9 @@ export default function PixelTrajectoryChart() {
           {clickedPixel.hh_baseline_db != null && (
             <ReferenceLine
               y={clickedPixel.hh_baseline_db}
-              stroke="#F47216"
+              stroke="#FF671F"
               strokeDasharray="2 2"
-              label={{ value: `dry ref ${clickedPixel.reference_date?.slice(5) || ""}`, fill: "#F47216", fontSize: 9 }}
+              label={{ value: `dry ref ${clickedPixel.reference_date?.slice(5) || ""}`, fill: "#FF671F", fontSize: 9 }}
             />
           )}
           <Line type="monotone" dataKey="HH" stroke="#38BDF8" dot={{ r: 3 }} connectNulls />
@@ -72,7 +73,7 @@ export default function PixelTrajectoryChart() {
         </LineChart>
       </ResponsiveContainer>
       {classes.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1 telemetry-mono text-[10px]">
+        <div className="mt-1 flex flex-wrap gap-1 telemetry-mono text-xs">
           {dates.map((d, i) => (
             <span
               key={d}
@@ -86,7 +87,7 @@ export default function PixelTrajectoryChart() {
         </div>
       )}
       {data.length === 0 && (
-        <p className="telemetry-mono text-[11px] text-slate-500">
+        <p className="telemetry-mono text-xs text-slate-400">
           No trajectory yet — pixel cube is generated in Phase 2.
         </p>
       )}

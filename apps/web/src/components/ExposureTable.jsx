@@ -29,15 +29,15 @@ export default function ExposureTable() {
   return (
     <div>
       <h3 className="mb-2 telemetry-mono text-xs uppercase tracking-wide text-cyan">Ground Inspection Candidates</h3>
-      <p className="mb-2 text-[11px] italic text-slate-400">
+      <p className="mb-2 text-xs italic text-slate-400">
         {exposure?.note ||
           "Roads & settlements wet on ≥3 NISAR observations. Inspection candidates only — never a damage claim."}
       </p>
       {rows.length === 0 ? (
-        <p className="telemetry-mono text-xs text-slate-500">{note || "No candidates loaded yet."}</p>
+        <p className="telemetry-mono text-xs text-slate-400">{note || "No candidates loaded yet."}</p>
       ) : (
         <>
-          <div className="mb-2 flex items-center gap-2 text-[11px] telemetry-mono text-slate-400">
+          <div className="mb-2 flex items-center gap-2 text-xs telemetry-mono text-slate-400">
             <span>{sorted.length} candidates</span>
             <select
               aria-label="Filter by kind"
@@ -51,7 +51,7 @@ export default function ExposureTable() {
             </select>
           </div>
           <table className="w-full text-left text-xs telemetry-mono">
-            <thead className="text-slate-500">
+            <thead className="text-slate-400">
               <tr>
                 {COLUMNS.map(([key, label]) => (
                   <th
@@ -81,7 +81,7 @@ export default function ExposureTable() {
               ))}
             </tbody>
           </table>
-          <p className="mt-2 text-[10px] text-slate-500">
+          <p className="mt-2 text-xs text-slate-400">
             {exposure?.source ? `Source: ${exposure.source}. ` : ""}© OpenStreetMap contributors. Click a row to fly the map.
           </p>
         </>

@@ -10,7 +10,7 @@ export default {
         grid: "#1E293B", // subtle grid border
         nasa: "#0B3D91", // NASA mission blue
         cyan: "#38BDF8", // telemetry cyan (validated)
-        isro: "#F47216", // ISRO solar orange (playhead / accents)
+        isro: "#FF671F", // ISRO solar orange (playhead / accents)
         water: "#0284C7", // open water
         fveg: "#10B981", // flooded vegetation
         paddy: "#F59E0B", // paddy-like agricultural inundation

@@ -13,7 +13,7 @@ const dayOf = (d) => new Date(`${d}T00:00:00Z`).getTime();
 const pct = (d) => ((dayOf(d) - dayOf(SEASON_START)) / (dayOf(SEASON_END) - dayOf(SEASON_START))) * 100;
 
 export default function MonsoonTimeSlider() {
-  const { timeline, activeDate, setActiveDate, playing, setPlaying, timelineMeta } = useMissionStore();
+  const { timeline, activeDate, setActiveDate, playing, setPlaying, timelineMeta, audienceMode } = useMissionStore();
 
   // Animation: advance one acquisition every STEP_MS, loop at the end.
   useEffect(() => {
@@ -28,8 +28,8 @@ export default function MonsoonTimeSlider() {
 
   return (
     <div className="border-t border-grid bg-panel px-4 py-3">
-      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] telemetry-mono text-slate-400">
-        <div className="flex items-center gap-2">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-[11px] telemetry-mono text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setPlaying(!playing)}
             disabled={timeline.length < 2}
@@ -39,11 +39,13 @@ export default function MonsoonTimeSlider() {
             {playing ? "❚❚ PAUSE" : "▶ PLAY"}
           </button>
           <span>MONSOON ACQUISITION TIMELINE · JUN–NOV 2026</span>
-          {timelineMeta.track_frame && <span className="text-slate-500">TRACK/FRAME {timelineMeta.track_frame}</span>}
+          {audienceMode === "scientific" && timelineMeta.track_frame && <span className="text-slate-500">TRACK/FRAME {timelineMeta.track_frame}</span>}
         </div>
         <span className="acq-gap rounded px-2 py-0.5 text-slate-200">SENSOR ACQUISITION GAP (27 JUL – 10 AUG)</span>
       </div>
 
+      <div className="overflow-x-auto overscroll-x-contain timeline-scroll">
+      <div style={{ minWidth: Math.max(600, timeline.length * 68) }}>
       {/* Season ruler: June–November with the hatched gap band and acquisition ticks. */}
       <div className="relative mb-2 h-3 rounded bg-orbital" aria-hidden="true">
         <div
@@ -64,7 +66,7 @@ export default function MonsoonTimeSlider() {
         ))}
       </div>
 
-      <div className="relative flex flex-wrap items-center gap-1">
+      <div className="relative flex flex-nowrap items-center gap-1">
         {timeline.length === 0 && (
           <span className="telemetry-mono text-xs text-slate-500">No acquisitions loaded.</span>
         )}
@@ -73,14 +75,15 @@ export default function MonsoonTimeSlider() {
           const active = t.date === activeDate;
           return (
             <button
+              aria-pressed={active}
               key={t.date}
               onClick={() => {
                 setPlaying(false);
                 setActiveDate(t.date);
               }}
               title={`${t.date} · ${t.maturity || "PROVISIONAL"}`}
-              className={`flex flex-col items-center rounded px-2 py-1 text-[10px] telemetry-mono transition ${
-                active ? "bg-isro/30 text-isro" : "text-slate-400 hover:bg-grid"
+              className={`flex shrink-0 snap-center flex-col items-center rounded px-2 py-1 text-[10px] telemetry-mono transition ${
+                active ? "border-b-2 border-isro bg-isro/30 font-bold text-isro" : "text-slate-400 hover:bg-grid"
               } ${inGap ? "acq-gap" : ""}`}
             >
               <span
@@ -93,6 +96,8 @@ export default function MonsoonTimeSlider() {
             </button>
           );
         })}
+      </div>
+      </div>
       </div>
     </div>
   );
