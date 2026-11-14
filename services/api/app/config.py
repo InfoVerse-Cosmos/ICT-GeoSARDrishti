@@ -5,14 +5,16 @@ runs in deterministic local-cache mode (SRS §6, §7.2) and never crashes.
 """
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# services/api/  (data_store lives here)
+# services/api/  (data_store lives here). GEOSAR_DATA_STORE points the server at
+# another pack folder (e.g. a synthetic test pack) without touching committed data.
 API_ROOT = Path(__file__).resolve().parent.parent
-DATA_STORE = API_ROOT / "data_store"
+DATA_STORE = Path(os.environ.get("GEOSAR_DATA_STORE") or API_ROOT / "data_store")
 
 
 class Settings(BaseSettings):
@@ -31,6 +33,14 @@ class Settings(BaseSettings):
 
     # Strict timeout on every external call (SRS §7.2)
     external_timeout_seconds: float = 3.5
+
+    # CMR collection short_name(s), comma-separated. ASF keeps the maturity levels in separate
+    # collections: NISAR_L2_GCOV_PROVISIONAL_V1 (PROVISIONAL) and NISAR_L2_GCOV_V1 (VALIDATED).
+    nisar_cmr_short_name: str = "NISAR_L2_GCOV_PROVISIONAL_V1,NISAR_L2_GCOV_V1"
+
+    # PROVISIONAL -> VALIDATED transition (21-23 Oct 2026, SRS §3.2); dates >= this are VALIDATED
+    # when the catalogue entry does not state the maturity explicitly.
+    validated_from: str = "2026-10-23"
 
     @property
     def cors_origin_list(self) -> list[str]:

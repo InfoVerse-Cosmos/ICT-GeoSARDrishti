@@ -30,6 +30,13 @@ def deterministic_card(t: dict) -> dict:
     peak_date = t.get("peak_date")
     maturity = t.get("peak_maturity", "PROVISIONAL")
 
+    m_open = hydro.get("m_open") or 0
+    baseline, peak_hh = t.get("hh_baseline_db"), t.get("hh_peak_db")
+    d_ratio = t.get("delta_ratio_db")
+    min_hh, min_hh_date = t.get("min_hh_db"), t.get("min_hh_date")
+    ow_thresh = t.get("open_water_threshold_db")
+    single_pol = bool(t.get("single_pol_mode"))
+
     persistence = (
         f"Wet in {m} of {n} valid NISAR L-band observations"
         + (f" ({pct}%)." if pct is not None else ".")
@@ -39,24 +46,44 @@ def deterministic_card(t: dict) -> dict:
 
     physics = "No double-bounce surge recorded at this pixel."
     if delta_hh is not None and peak_date:
+        detail = ""
+        if baseline is not None and peak_hh is not None:
+            detail = f" (from {baseline:.1f} dB dry baseline to {peak_hh:.1f} dB)"
+        ratio_txt = ""
+        if d_ratio is not None and not single_pol:
+            ratio_txt = f" with a {d_ratio:+.1f} dB change in HH−HV difference"
         physics = (
-            f"During the {peak_date} acquisition ({maturity}), HH backscatter changed by "
-            f"{delta_hh:+.1f} dB versus the dry baseline — "
+            f"During the {peak_date} acquisition ({maturity or 'PROVISIONAL'}), HH backscatter changed by "
+            f"{delta_hh:+.1f} dB{detail}{ratio_txt} versus the dry baseline — "
             + ("consistent with L-band dihedral double-bounce scattering from water beneath vegetation."
                if delta_hh >= 3.0 else "below the +3.0 dB double-bounce threshold.")
         )
+    if m_open and min_hh is not None and min_hh_date:
+        thr = f" (scene open-water threshold {ow_thresh:.1f} dB)" if ow_thresh is not None else ""
+        physics += (f" Open-water signature: HH fell to {min_hh:.1f} dB on {min_hh_date}{thr} — "
+                    f"specular reflection from a smooth water surface, dark in {m_open} of {n} observations.")
+    if single_pol:
+        physics += " Single-Pol HH mode: HV unavailable, so the HH−HV ratio test was not applied."
 
     confidence = "Low"
-    if m and n and delta_hh is not None:
-        if m / n >= 0.5 and delta_hh >= 3.0:
+    if m and n:
+        surge = delta_hh is not None and delta_hh >= 3.0
+        persistent_open = m_open / n >= 0.5
+        if m / n >= 0.5 and (surge or persistent_open):
             confidence = "Moderate-High"
-        elif m / n >= 0.3:
+        elif m / n >= 0.3 and (delta_hh is not None or m_open):
             confidence = "Moderate"
+
+    regime_txt = regime
+    if t.get("flooded_veg_sublabel") and regime:
+        regime_txt = f"{regime} ({t['flooded_veg_sublabel']})"
+    elif t.get("flooded_veg_sublabel"):
+        regime_txt = t["flooded_veg_sublabel"]
 
     return {
         "mode": "deterministic",
         "location": f"{lat}, {lon}" if lat is not None else None,
-        "hydrological_regime": regime,
+        "hydrological_regime": regime_txt,
         "monsoon_persistence": persistence,
         "radar_physics_evidence": physics,
         "land_cover_context": _worldcover_text(wc, jrc),
@@ -65,6 +92,8 @@ def deterministic_card(t: dict) -> dict:
             "This is a radar-derived surface/canopy-water indication for field inspection, "
             "not a confirmed flood-depth measurement."
         ),
+        **({"data_notice": "SYNTHETIC TEST DATA — not a NISAR observation."}
+           if t.get("synthetic_test_data") else {}),
     }
 
 

@@ -29,7 +29,8 @@
     "limitations": [
       "Groundwater/aquifer layers are official hydrogeological context, never direct SAR detection.",
       "Radar-derived surface-water indication for inspection, not confirmed flood depth.",
-      "Hydroperiod expressed as M of N valid NISAR observations."
+      "Hydroperiod expressed as M of N valid NISAR observations, not days flooded.",
+      "OPERA agreement is inter-sensor agreement, not ground-truth accuracy."
     ]
   },
   "_note": "SEED manifest. Dates/granule IDs are placeholders (TBD) until the Phase 1 data gate locks the same-track list."

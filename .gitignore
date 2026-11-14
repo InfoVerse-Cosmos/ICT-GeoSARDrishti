@@ -31,6 +31,9 @@ scripts/_work/
 # Logs
 *.log
 
+# Playwright MCP screenshots / console logs from local browser testing
+.playwright-mcp/
+
 # Agent / workflow scratch dirs
 .agents/
 .worktrees/
