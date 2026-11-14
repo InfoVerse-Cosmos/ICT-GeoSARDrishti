@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Builds
+apps/web/dist/
+*.egg-info/
+
+# Env & secrets (never commit real tokens)
+.env
+.env.local
+*.local
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Large raw SAR downloads (only committed derived packs belong in data_store/)
+scripts/_raw/
+scripts/_work/
+*.h5
+*.SAFE/
+
+# Logs
+*.log

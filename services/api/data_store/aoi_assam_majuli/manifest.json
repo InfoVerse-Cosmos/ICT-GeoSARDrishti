@@ -1,0 +1,37 @@
+{
+  "aoi_id": "aoi_assam_majuli",
+  "name": "Majuli-Kaziranga Floodplain, Brahmaputra Valley, Assam",
+  "role": "Primary CH-06 Monsoon Time-Series Showcase",
+  "bounds": [93.90, 26.75, 94.30, 27.05],
+  "default_zoom": 9,
+  "polarization": "HH+HV",
+  "track_frame": "TBD-Phase1",
+  "fallback_plan": "A",
+  "layers": ["open_water", "flooded_veg", "hydroperiod", "gmm_regimes", "jrc_anomaly"],
+  "acquisition_gaps": ["2026-07-27/2026-08-10"],
+  "timeline": [
+    {"date": "2026-06-14", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-06-26", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-07-10", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-07-22", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-08-15", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-09-08", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-10-02", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-10-26", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "VALIDATED"},
+    {"date": "2026-11-07", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "VALIDATED"}
+  ],
+  "provenance": {
+    "granules": [],
+    "otsu_thresholds": {},
+    "delta_hh_params": {"min_delta_hh_db": 3.0, "min_delta_ratio_db": 1.5},
+    "opera_dswx_agreement_pct": null,
+    "software": {"note": "Filled by scripts/02 and scripts/03 in Phase 2."},
+    "limitations": [
+      "Radar-derived surface/canopy-water indication for inspection, not confirmed flood depth.",
+      "OPERA agreement is inter-sensor agreement, not ground-truth accuracy.",
+      "Hydroperiod expressed as M of N valid NISAR observations, not days flooded.",
+      "27 Jul - 10 Aug 2026 acquisition gap is real and shown explicitly."
+    ]
+  },
+  "_note": "SEED manifest. Dates/granule IDs are placeholders (TBD) until the Phase 1 data gate locks the same-track GCOV list."
+}

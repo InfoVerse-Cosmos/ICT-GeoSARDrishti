@@ -1,0 +1,11 @@
+# GeoSAR Drishti — FastAPI backend RUNTIME deps only.
+# Heavy geospatial libs (rasterio, earthaccess, h5py, geopandas, osmnx, scikit-*)
+# are only used by the offline processing in scripts/ — see scripts/requirements.txt.
+# Keeping the server lightweight means fast cold starts on free cloud tiers (SRS §6.1).
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+httpx==0.28.1
+numpy==2.1.3
+python-dotenv==1.0.1

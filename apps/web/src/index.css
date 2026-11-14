@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: #0b0f19; /* orbital slate */
+  color: #e2e8f0;
+  font-family: "Inter", "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Monospace for coordinates, dB values, granule IDs, area metrics (SRS §4.1). */
+.telemetry-mono {
+  font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Acquisition-gap hatch band on the time slider (SRS §3.2). */
+.acq-gap {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(148, 163, 184, 0.35),
+    rgba(148, 163, 184, 0.35) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}

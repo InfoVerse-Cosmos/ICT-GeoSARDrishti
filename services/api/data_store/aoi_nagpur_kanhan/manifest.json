@@ -1,0 +1,36 @@
+{
+  "aoi_id": "aoi_nagpur_kanhan",
+  "name": "Kanhan-Pench / Wainganga Corridor, Nagpur District, Maharashtra",
+  "role": "Local Watershed & Multi-Source Context Showcase",
+  "bounds": [78.95, 21.15, 79.35, 21.45],
+  "default_zoom": 9,
+  "polarization": "HH+HV",
+  "track_frame": "TBD-Phase1",
+  "fallback_plan": "A",
+  "layers": ["open_water", "hydroperiod", "context_layers"],
+  "acquisition_gaps": ["2026-07-27/2026-08-10"],
+  "timeline": [
+    {"date": "2026-06-20", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-07-14", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-08-19", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-09-12", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "PROVISIONAL"},
+    {"date": "2026-10-30", "granule_id": "TBD", "track_frame": "TBD", "polarization": "HH+HV", "maturity": "VALIDATED"}
+  ],
+  "provenance": {
+    "granules": [],
+    "otsu_thresholds": {},
+    "delta_hh_params": {"min_delta_hh_db": 3.0, "min_delta_ratio_db": 1.5},
+    "opera_dswx_agreement_pct": null,
+    "software": {"note": "Filled by scripts/02 and scripts/03 in Phase 2."},
+    "context_sources": [
+      "GSDA (Govt. of Maharashtra) watershed boundaries",
+      "CGWB Nagpur District Aquifer Management Plan (Deccan Trap / Alluvium)"
+    ],
+    "limitations": [
+      "Groundwater/aquifer layers are official hydrogeological context, never direct SAR detection.",
+      "Radar-derived surface-water indication for inspection, not confirmed flood depth.",
+      "Hydroperiod expressed as M of N valid NISAR observations."
+    ]
+  },
+  "_note": "SEED manifest. Dates/granule IDs are placeholders (TBD) until the Phase 1 data gate locks the same-track list."
+}

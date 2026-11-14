@@ -1,0 +1,19 @@
+{
+  "_note": "Static offline mirror (SRS §7.2 rule 3). Keeps the map + time slider interactive if the venue loses internet. Replace with a trimmed copy of the real manifests before the demo.",
+  "aois": [
+    {
+      "aoi_id": "aoi_assam_majuli",
+      "name": "Majuli-Kaziranga Floodplain, Brahmaputra Valley, Assam",
+      "bounds": [93.90, 26.75, 94.30, 27.05],
+      "default_zoom": 9,
+      "layers": ["open_water", "flooded_veg", "hydroperiod", "gmm_regimes", "jrc_anomaly"]
+    },
+    {
+      "aoi_id": "aoi_nagpur_kanhan",
+      "name": "Kanhan-Pench / Wainganga Corridor, Nagpur District, Maharashtra",
+      "bounds": [78.95, 21.15, 79.35, 21.45],
+      "default_zoom": 9,
+      "layers": ["open_water", "hydroperiod", "context_layers"]
+    }
+  ]
+}
