@@ -15,7 +15,7 @@ from . import __version__
 from .config import get_settings
 from .data_store import store
 from .envelope import envelope
-from .routers import aois, exposure, inspect, layers, nisar
+from .routers import aois, exposure, inspect, layers, nisar, report
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("geosar")
@@ -79,6 +79,7 @@ app.include_router(nisar.router, prefix="/api/v1")
 app.include_router(layers.router, prefix="/api/v1")
 app.include_router(inspect.router, prefix="/api/v1")
 app.include_router(exposure.router, prefix="/api/v1")
+app.include_router(report.router, prefix="/api/v1")
 
 
 @app.get("/")

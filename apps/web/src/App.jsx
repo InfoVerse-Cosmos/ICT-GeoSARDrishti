@@ -9,6 +9,8 @@ import EvidenceCardPanel from "@/components/EvidenceCardPanel.jsx";
 import ExposureTable from "@/components/ExposureTable.jsx";
 import ProvenanceModal from "@/components/ProvenanceModal.jsx";
 import ScenePanel from "@/components/ScenePanel.jsx";
+import ReportModal from "@/components/ReportModal.jsx";
+import SimplePanel from "@/components/SimplePanel.jsx";
 
 const RETRY_MS = 5000;
 
@@ -22,9 +24,12 @@ function metaFrom(src) {
 }
 
 export default function App() {
-  const { activeAoiId, connection, setAois, setTimeline, setConnection, setFallbackActive } = useMissionStore();
+  const { activeAoiId, connection, audienceMode, setAois, setTimeline, setConnection, setFallbackActive } =
+    useMissionStore();
+  const simple = audienceMode === "simple";
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
   const [provenanceOpen, setProvenanceOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [uplink, setUplink] = useState({ establishing: true, attempt: 0 });
   const offlineMirror = useRef(null);
 
@@ -80,7 +85,10 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col bg-orbital text-slate-200">
-      <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} />
+      <TopTelemetryBar
+        onOpenProvenance={() => setProvenanceOpen(true)}
+        onOpenReport={() => setReportOpen(true)}
+      />
       {uplink.establishing && (
         <div
           role="status"
@@ -105,39 +113,48 @@ export default function App() {
           <MonsoonTimeSlider />
         </main>
 
-        {/* Right telemetry & evidence drawer */}
+        {/* Right drawer: Simple panel for laymen, full Scientist tabs otherwise */}
         <aside className="flex w-[400px] flex-col border-l border-grid bg-panel">
-          <nav className="flex border-b border-grid text-xs telemetry-mono">
-            {[
-              ["metrics", "SCENE & VALIDATION"],
-              ["trajectory", "PIXEL TRAJECTORY"],
-              ["exposure", "INSPECTION LOG"],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={`flex-1 px-3 py-2 ${
-                  tab === id ? "bg-nasa/30 text-cyan" : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            {tab === "metrics" && <ScenePanel />}
-            {tab === "trajectory" && (
-              <>
-                <PixelTrajectoryChart />
-                <EvidenceCardPanel />
-              </>
-            )}
-            {tab === "exposure" && <ExposureTable />}
-          </div>
+          {simple ? (
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <SimplePanel onOpenReport={() => setReportOpen(true)} />
+            </div>
+          ) : (
+            <>
+              <nav className="flex border-b border-grid text-xs telemetry-mono">
+                {[
+                  ["metrics", "SCENE & VALIDATION"],
+                  ["trajectory", "PIXEL TRAJECTORY"],
+                  ["exposure", "INSPECTION LOG"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    onClick={() => setTab(id)}
+                    className={`flex-1 px-3 py-2 ${
+                      tab === id ? "bg-nasa/30 text-cyan" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                {tab === "metrics" && <ScenePanel />}
+                {tab === "trajectory" && (
+                  <>
+                    <PixelTrajectoryChart />
+                    <EvidenceCardPanel />
+                  </>
+                )}
+                {tab === "exposure" && <ExposureTable />}
+              </div>
+            </>
+          )}
         </aside>
       </div>
 
       <ProvenanceModal open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
+      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </div>
   );
 }
