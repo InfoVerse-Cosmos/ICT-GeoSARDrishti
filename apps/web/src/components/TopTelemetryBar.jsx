@@ -24,6 +24,7 @@ export default function TopTelemetryBar({ onOpenProvenance, onOpenReport }) {
   return (
     <header className="flex flex-wrap items-center gap-4 border-b border-grid bg-panel px-4 py-2">
       <div className="flex items-center gap-2">
+        <a href="#/" aria-label="Back to landing page" className="text-sm text-slate-400 hover:text-cyan">← Home</a>
         <span className="rounded bg-nasa px-2 py-1 text-xs font-bold text-white">NASA–ISRO</span>
         <span className="telemetry-mono text-sm font-semibold text-cyan">NISAR · GeoSAR Drishti</span>
       </div>
@@ -44,6 +45,7 @@ export default function TopTelemetryBar({ onOpenProvenance, onOpenReport }) {
 
       {simple ? (
         <div className="flex flex-1 flex-wrap items-center gap-2 text-[11px] telemetry-mono text-slate-400">
+          <Pill label={current?.maturity || "PROVISIONAL"} tone={current?.maturity === "VALIDATED" ? "cyan" : "isro"} />
           {timelineMeta.synthetic_test_data && <Pill label="SYNTHETIC TEST DATA" tone="alert" />}
           <span className="text-slate-500">Satellite radar water view · tap the map to inspect a spot</span>
         </div>
@@ -92,7 +94,7 @@ function AudienceToggle({ mode, onChange }) {
     <div className="flex items-center rounded border border-grid text-[11px] telemetry-mono" role="group" aria-label="Audience mode">
       {[
         ["simple", "Simple"],
-        ["scientist", "Scientist"],
+        ["scientific", "Scientific"],
       ].map(([id, label]) => (
         <button
           key={id}

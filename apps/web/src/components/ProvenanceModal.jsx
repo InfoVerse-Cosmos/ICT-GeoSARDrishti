@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "@/api/client.js";
 import { useMissionStore } from "@/store/useMissionStore.js";
 
 // Provenance modal (SRS §4.2, §7.1 /provenance + /nisar/earthdata-live).
 export default function ProvenanceModal({ open, onClose }) {
   const { activeAoiId, aois } = useMissionStore();
+  const dialogRef = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const [prov, setProv] = useState(null);
   const [live, setLive] = useState(null);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -17,6 +20,26 @@ export default function ProvenanceModal({ open, onClose }) {
       setProv(res.data || null);
     })();
   }, [open, activeAoiId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement;
+    const dialog = dialogRef.current;
+    const focusable = () => [...dialog.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')];
+    (focusable()[0] || dialog).focus();
+    const handleKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); closeRef.current(); }
+      if (event.key === "Tab") {
+        const items = focusable();
+        const first = items[0] || dialog;
+        const last = items[items.length - 1] || dialog;
+        if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => { document.removeEventListener("keydown", handleKey); previous?.focus(); };
+  }, [open]);
 
   if (!open) return null;
 
@@ -31,18 +54,22 @@ export default function ProvenanceModal({ open, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="provenance-title"
         role="dialog"
         aria-label="Scientific provenance"
-        className="max-h-[85vh] w-[640px] overflow-y-auto rounded border border-grid bg-panel p-4"
+        className="max-h-[85vh] w-full max-w-[640px] overflow-y-auto rounded border border-grid bg-panel p-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="telemetry-mono text-sm text-cyan">Scientific Provenance · {activeAoiId}</h2>
+          <h2 id="provenance-title" className="telemetry-mono text-sm text-cyan">Scientific Provenance · {activeAoiId}</h2>
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-200">✕</button>
         </div>
 
         {!prov ? (
-          <p className="telemetry-mono text-xs text-slate-500">Loading provenance…</p>
+          <p className="telemetry-mono text-xs text-slate-400">Loading provenance…</p>
         ) : (
           <div className="space-y-3 text-xs">
             {prov.synthetic_test_data && (
@@ -123,7 +150,7 @@ export default function ProvenanceModal({ open, onClose }) {
                 {liveLoading ? "Querying CMR…" : "Query NASA CMR now"}
               </button>
               {live && (
-                <div className="mt-2 telemetry-mono text-[11px] text-slate-300">
+                <div className="mt-2 telemetry-mono text-xs text-slate-300">
                   <div>
                     source: <span className="text-cyan">{live.source_mode}</span> · granules: {live.data?.granule_count ?? 0}
                   </div>
@@ -146,7 +173,7 @@ export default function ProvenanceModal({ open, onClose }) {
 function Section({ title, children }) {
   return (
     <div>
-      <div className="telemetry-mono text-[10px] uppercase tracking-wide text-slate-500">{title}</div>
+      <div className="telemetry-mono text-xs uppercase tracking-wide text-slate-400">{title}</div>
       <div className="mt-1">{children}</div>
     </div>
   );

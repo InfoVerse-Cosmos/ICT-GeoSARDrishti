@@ -35,7 +35,7 @@ const AUDIENCE_KEY = "geosar.audienceMode";
 function readAudience() {
   try {
     const v = localStorage.getItem(AUDIENCE_KEY);
-    return v === "scientist" || v === "simple" ? v : "simple";
+    return v === "scientist" || v === "scientific" ? "scientific" : "simple";
   } catch {
     return "simple";
   }
@@ -50,8 +50,10 @@ function persistAudience(mode) {
 const INITIAL_AUDIENCE = readAudience();
 
 export const useMissionStore = create((set) => ({
+  layerOpacity: 0.85,
+  evidenceLoading: false,
   aois: [],
-  audienceMode: INITIAL_AUDIENCE, // simple | scientist
+  audienceMode: INITIAL_AUDIENCE, // simple | scientific
   activeAoiId: "aoi_assam_majuli",
   timeline: [],
   timelineMeta: EMPTY_META,
@@ -71,13 +73,16 @@ export const useMissionStore = create((set) => ({
   connection: "CONNECTING", // LIVE_API | LOCAL_CACHE | OFFLINE | CONNECTING
   fallbackActive: false,
 
+  setLayerOpacity: (layerOpacity) => set({ layerOpacity }),
+  setEvidenceLoading: (evidenceLoading) => set({ evidenceLoading }),
   setAois: (aois) => set({ aois }),
   // Switching audience also swaps the default basemap and resets Simple mode to a
   // plain result layer so a layman never lands on a scientist-only overlay.
   setAudienceMode: (audienceMode) =>
     set((s) => {
+      audienceMode = audienceMode === "scientist" ? "scientific" : audienceMode;
       persistAudience(audienceMode);
-      const next = { audienceMode };
+      const next = { audienceMode, compareDate: null };
       if (audienceMode === "simple") {
         if (s.basemap === "dark") next.basemap = "satellite";
         if (!["open_water", "flooded_veg", "hydroperiod"].includes(s.activeLayer)) {
@@ -89,7 +94,7 @@ export const useMissionStore = create((set) => ({
       return next;
     }),
   setActiveAoi: (activeAoiId) =>
-    set({ activeAoiId, clickedPixel: null, evidenceCard: null, exposure: null, compareDate: null, playing: false }),
+    set({ activeAoiId, evidenceLoading: false, clickedPixel: null, evidenceCard: null, exposure: null, compareDate: null, playing: false }),
   setTimeline: (timeline, meta = {}) =>
     set({
       timeline,

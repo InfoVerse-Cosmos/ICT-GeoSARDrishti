@@ -6,7 +6,11 @@ import { LAYERS, useMissionStore } from "@/store/useMissionStore.js";
 import MonsoonTimeSlider from "@/components/MonsoonTimeSlider.jsx";
 import TopTelemetryBar from "@/components/TopTelemetryBar.jsx";
 import ExposureTable from "@/components/ExposureTable.jsx";
+import ProvenanceModal from "@/components/ProvenanceModal.jsx";
+import ErrorBoundary from "@/components/ErrorBoundary.jsx";
+import { api } from "@/api/client.js";
 import EvidenceCardPanel from "@/components/EvidenceCardPanel.jsx";
+import ReportModal from "@/components/ReportModal.jsx";
 import fallbackManifest from "../../public/fallback_data/manifest.json";
 
 const INITIAL = useMissionStore.getState();
@@ -17,7 +21,7 @@ const TIMELINE = [
 ];
 const AOIS = [{ aoi_id: "aoi_assam_majuli" }, { aoi_id: "aoi_nagpur_kanhan" }];
 
-beforeEach(() => useMissionStore.setState(INITIAL, true));
+beforeEach(() => { useMissionStore.setState(INITIAL, true); useMissionStore.getState().setAudienceMode("scientific"); });
 afterEach(cleanup);
 
 // ------------------------------------------------------------ store
@@ -161,6 +165,7 @@ describe("TopTelemetryBar", () => {
 
 // ------------------------------------------------------------ dual-audience
 describe("audience mode (Simple default)", () => {
+  beforeEach(() => useMissionStore.setState(INITIAL, true));
   it("defaults to Simple and hides the scientist pills + Provenance button", () => {
     expect(useMissionStore.getState().audienceMode).toBe("simple");
     useMissionStore.getState().setTimeline(TIMELINE);
@@ -181,6 +186,21 @@ describe("audience mode (Simple default)", () => {
     expect(useMissionStore.getState().basemap).toBe("satellite");
     useMissionStore.getState().setAudienceMode("scientist");
     expect(useMissionStore.getState().basemap).toBe("dark");
+  });
+});
+
+describe("report audience", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows regime details in Scientific mode and hides them in Simple mode", async () => {
+    vi.spyOn(api, "report").mockResolvedValue({
+      data: { data_pack_ready: true, hydroperiod: {}, classes: { regimes_km2: { River: 12 } } },
+    });
+    const view = render(<ReportModal open onClose={() => {}} />);
+    expect(await screen.findByText("Hydrological regimes (GMM, unsupervised)")).toBeTruthy();
+    act(() => useMissionStore.getState().setAudienceMode("simple"));
+    expect(screen.queryByText("Hydrological regimes (GMM, unsupervised)")).toBeNull();
+    view.unmount();
   });
 });
 
@@ -292,5 +312,74 @@ describe("Evidence card panel", () => {
     expect(screen.getByText("Moderate-High")).toBeTruthy();
     expect(screen.getByText(/not a confirmed flood-depth measurement/)).toBeTruthy();
     expect(screen.getByText("SYNTHETIC TEST DATA — not a NISAR observation.")).toBeTruthy();
+  });
+});
+
+
+describe("audience modes", () => {
+  it("defaults to simple and uses satellite imagery", () => {
+    expect(INITIAL.audienceMode).toBe("simple");
+    expect(INITIAL.basemap).toBe("satellite");
+  });
+  it("hides specialist telemetry in simple mode and restores it in scientific mode", () => {
+    useMissionStore.getState().setTimeline(TIMELINE);
+    useMissionStore.getState().setAudienceMode("simple");
+    render(<TopTelemetryBar />);
+    expect(screen.queryByText("GRANULE G_1107")).toBeNull();
+    expect(screen.queryByText("HH+HV")).toBeNull();
+    expect(screen.getByText("VALIDATED")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Scientific" }));
+    expect(screen.getByText("GRANULE G_1107")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Scientific" }).getAttribute("aria-pressed")).toBe("true");
+  });
+  it("keeps synthetic-data warnings visible in simple mode", () => {
+    useMissionStore.setState({ audienceMode: "simple", timelineMeta: { synthetic_test_data: true } });
+    render(<TopTelemetryBar />);
+    expect(screen.getByText("SYNTHETIC TEST DATA")).toBeTruthy();
+  });
+  it("shows loading feedback while an evidence card is being fetched", () => {
+    useMissionStore.setState({ clickedPixel: { status: "ok" }, evidenceLoading: true });
+    render(<EvidenceCardPanel />);
+    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.queryByText(/Evidence card unavailable/)).toBeNull();
+  });
+});
+
+
+describe("provenance accessibility", () => {
+  it("traps focus, closes on Escape, and restores the trigger focus", () => {
+    const pending = vi.spyOn(api, "provenance").mockReturnValue(new Promise(() => {}));
+    const onClose = vi.fn();
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const view = render(<ProvenanceModal open onClose={onClose} />);
+    expect(screen.getByRole("dialog").getAttribute("aria-modal")).toBe("true");
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(close, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(close, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+    view.rerender(<ProvenanceModal open={false} onClose={onClose} />);
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+    pending.mockRestore();
+  });
+});
+
+describe("error recovery", () => {
+  it("lets a failed panel render again after retry", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    let fails = true;
+    function Panel() { if (fails) throw new Error("Panel failed"); return <p>Recovered panel</p>; }
+    render(<ErrorBoundary><Panel /></ErrorBoundary>);
+    expect(screen.getByRole("alert")).toBeTruthy();
+    fails = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByText("Recovered panel")).toBeTruthy();
+    log.mockRestore();
   });
 });

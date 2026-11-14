@@ -24,7 +24,7 @@ export default function SceneMetricsPanel() {
     <div className="space-y-4 text-sm">
       <div>
         <h3 className="mb-1 telemetry-mono text-xs uppercase tracking-wide text-cyan">Scene Metrics</h3>
-        <div className="telemetry-mono text-[11px] text-slate-400">
+        <div className="telemetry-mono text-xs text-slate-400">
           {current ? `${current.date} · ${current.maturity || "PROVISIONAL"}` : "No date selected"}
         </div>
         {metrics ? (
@@ -36,12 +36,12 @@ export default function SceneMetricsPanel() {
             </tbody>
           </table>
         ) : (
-          <p className="mt-2 telemetry-mono text-[11px] text-slate-500">
+          <p className="mt-2 telemetry-mono text-xs text-slate-400">
             Per-class area metrics are computed in Phase 2 (scripts/02) and written into the manifest.
           </p>
         )}
         {metrics?.valid_pixel_pct != null && (
-          <div className="mt-1 telemetry-mono text-[11px] text-slate-300">
+          <div className="mt-1 telemetry-mono text-xs text-slate-300">
             Valid pixels: <span className="text-cyan">{metrics.valid_pixel_pct}%</span>
           </div>
         )}
@@ -72,7 +72,7 @@ export default function SceneMetricsPanel() {
       {prov?.limitations?.length > 0 && (
         <div>
           <h3 className="mb-1 telemetry-mono text-xs uppercase tracking-wide text-cyan">Limitations</h3>
-          <ul className="list-disc space-y-1 pl-4 text-[11px] text-slate-400">
+          <ul className="list-disc space-y-1 pl-4 text-xs text-slate-400">
             {prov.limitations.map((l, i) => (
               <li key={i}>{l}</li>
             ))}
@@ -99,10 +99,10 @@ function Metric({ label, value, hint }) {
   return (
     <div className="mt-1">
       <div className="flex items-baseline justify-between">
-        <span className="telemetry-mono text-[11px] text-slate-400">{label}</span>
+        <span className="telemetry-mono text-xs text-slate-400">{label}</span>
         <span className="telemetry-mono text-cyan">{value}</span>
       </div>
-      {hint && <div className="text-[10px] italic text-slate-500">{hint}</div>}
+      {hint && <div className="text-xs italic text-slate-400">{hint}</div>}
     </div>
   );
 }

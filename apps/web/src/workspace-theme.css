@@ -1,0 +1,63 @@
+/* Match the landing page's neutral surfaces and NASA red accents.
+   Existing component geometry, scientific layer colors and controls are retained. */
+.mission-workspace {
+  --workspace-canvas: 17 17 17;
+  --workspace-panel: 27 27 27;
+  --workspace-line: 66 66 66;
+  --workspace-fg: 248 248 248;
+  --workspace-muted: 181 181 187;
+  --workspace-accent: 255 133 127;
+  --workspace-warning: 255 173 112;
+  --workspace-success: 110 231 183;
+  --workspace-blue: 147 197 253;
+  color: rgb(var(--workspace-fg));
+  color-scheme: dark;
+  font-family: 'Landing Public Sans', Arial, sans-serif;
+}
+.mission-workspace[data-theme='light'] {
+  --workspace-canvas: 255 255 255;
+  --workspace-panel: 246 246 246;
+  --workspace-line: 211 211 213;
+  --workspace-fg: 20 20 20;
+  --workspace-muted: 79 79 84;
+  --workspace-accent: 181 38 34;
+  --workspace-warning: 151 65 10;
+  --workspace-success: 4 120 87;
+  --workspace-blue: 11 61 145;
+  color-scheme: light;
+}
+.mission-workspace .telemetry-mono { font-family: 'Landing DM Mono', ui-monospace, monospace; }
+.mission-workspace :is(h1, h2, h3, h4, button) { font-family: 'Landing Inter', Arial, sans-serif; }
+.mission-workspace.bg-orbital, .mission-workspace .bg-orbital { background-color: rgb(var(--workspace-canvas)); }
+.mission-workspace .bg-panel { background-color: rgb(var(--workspace-panel)); }
+.mission-workspace [class~='bg-panel/90'] { background-color: rgb(var(--workspace-panel) / .95); }
+.mission-workspace :is(.bg-grid, .bg-slate-700) { background-color: rgb(var(--workspace-line) / .5); }
+.mission-workspace .border-grid { border-color: rgb(var(--workspace-line)); }
+.mission-workspace.text-slate-200, .mission-workspace :is(.text-slate-100, .text-slate-200, .text-slate-300) { color: rgb(var(--workspace-fg)); }
+.mission-workspace :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: rgb(var(--workspace-muted)); }
+.mission-workspace .text-cyan { color: rgb(var(--workspace-accent)); }
+.mission-workspace .text-alert { color: rgb(var(--workspace-accent)); }
+.mission-workspace .text-isro, .mission-workspace .text-paddy { color: rgb(var(--workspace-warning)); }
+.mission-workspace .text-emerald-300 { color: rgb(var(--workspace-success)); }
+.mission-workspace .text-sky-300 { color: rgb(var(--workspace-blue)); }
+.mission-workspace .border-cyan { border-color: #d83933; }
+.mission-workspace :is([class~='bg-nasa/30'], [class~='bg-nasa/40'], [class~='bg-cyan/20']) { background-color: rgb(216 57 51 / .1); }
+.mission-workspace [class~='hover:bg-grid']:hover, .mission-workspace [class~='hover:bg-grid/50']:hover { background-color: rgb(var(--workspace-line) / .4); }
+.mission-workspace [class~='hover:text-cyan']:hover { color: rgb(var(--workspace-accent)); }
+.mission-workspace [class~='hover:text-slate-200']:hover { color: rgb(var(--workspace-fg)); }
+.mission-workspace input { accent-color: #d83933; }
+.mission-workspace :focus-visible { outline-color: #2491ff; }
+
+/* Keep the same black masthead used on the landing page in either theme. */
+.mission-workspace > header {
+  --workspace-canvas: 5 5 5;
+  --workspace-panel: 5 5 5;
+  --workspace-line: 68 68 68;
+  --workspace-fg: 248 248 248;
+  --workspace-muted: 181 181 187;
+  --workspace-accent: 255 133 127;
+  --workspace-warning: 255 173 112;
+  --workspace-success: 110 231 183;
+  color: #f8f8f8;
+  color-scheme: dark;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { api } from "@/api/client.js";
@@ -6,7 +6,7 @@ import { LAYERS, REGIME_LEGEND, useMissionStore } from "@/store/useMissionStore.
 import { SIMPLE_LAYER_IDS, plainLayerLabel } from "@/plain.js";
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
-const OVERLAY_OPACITY = 0.85;
+
 
 // Key-free basemaps (all verified to serve tiles without an API key).
 // "nasa" = NASA EOSDIS GIBS Blue Marble — a real NASA earth backdrop (coarse, great for overview).
@@ -62,6 +62,38 @@ function applyBasemap(map, id) {
 // Center MapLibre GL JS viewport (SRS §4.2.2): switchable basemap, RGBA overlays per date,
 // before/after comparison, OSM inspection candidates, regional context, pixel click -> evidence.
 export default function MapWorkspace({ onPixelInspected }) {
+  const [layerError, setLayerError] = useState(false);
+  const requestRef = useRef(0);
+  const inspectLocation = async (lat, lng) => {
+    const requestId = ++requestRef.current;
+    const aoiId = useMissionStore.getState().activeAoiId;
+    const current = () => requestRef.current === requestId && useMissionStore.getState().activeAoiId === aoiId;
+    setClickedPixel({ lat, lon: lng, status: "loading" });
+    setEvidenceCard(null);
+    setEvidenceLoading(true);
+    inspectedCb.current?.();
+    try {
+      const res = await api.inspect(aoiId, lat.toFixed(5), lng.toFixed(5));
+      if (!current()) return;
+      setClickedPixel({ ...(res.data || {}), lat, lon: lng, status: res.status, warning: res.warning });
+      if (res.status === "ok") {
+        const card = await api.evidenceCard({ aoi_id: aoiId, lat, lon: lng, telemetry: res.data });
+        if (current()) setEvidenceCard(card.data?.card || null);
+      }
+    } catch (error) {
+      if (current()) {
+        setClickedPixel({
+          lat,
+          lon: lng,
+          status: "error",
+          warning: "Unable to load results for this location. Please try again.",
+        });
+        setEvidenceCard(null);
+      }
+    } finally { if (current()) setEvidenceLoading(false); }
+  };
+  const inspectRef = useRef(inspectLocation);
+  inspectRef.current = inspectLocation;
   const mapRef = useRef(null);
   const containerRef = useRef(null);
   const inspectedCb = useRef(onPixelInspected);
@@ -69,17 +101,21 @@ export default function MapWorkspace({ onPixelInspected }) {
 
   const {
     aois, activeAoiId, activeLayer, activeDate, compareDate, compareMix, timeline, showExposure,
-    exposure, clickedPixel, flyTo, connection, basemap, audienceMode,
+    exposure, clickedPixel, flyTo, connection, basemap, audienceMode, layerOpacity, setLayerOpacity, setEvidenceLoading,
     setActiveLayer, setClickedPixel, setEvidenceCard, setExposure, setCompareDate, setCompareMix, setShowExposure,
     setBasemap,
   } = useMissionStore();
 
-  const simple = audienceMode === "simple";
+  // Invalidate on every AOI transition, including switching away and back while a request is pending.
+  useEffect(() => useMissionStore.subscribe((state, previous) => {
+    if (state.activeAoiId !== previous.activeAoiId) requestRef.current += 1;
+  }), []);
+
   const aoi = aois.find((a) => a.aoi_id === activeAoiId);
-  const available = LAYERS.filter(
-    (l) => (!aoi?.layers || aoi.layers.includes(l.id)) && (!simple || SIMPLE_LAYER_IDS.includes(l.id)),
-  );
-  const layerDef = LAYERS.find((l) => l.id === activeLayer) || LAYERS[0];
+  const simple = audienceMode === "simple";
+  const available = LAYERS.filter((l) => (!aoi?.layers || aoi.layers.includes(l.id)) && (!simple || SIMPLE_LAYER_IDS.includes(l.id)));
+  const renderedLayer = simple && !SIMPLE_LAYER_IDS.includes(activeLayer) ? "open_water" : activeLayer;
+  const layerDef = LAYERS.find((l) => l.id === renderedLayer) || LAYERS[0];
   const isRaster = layerDef.id !== "context_layers";
 
   // ---- helpers ------------------------------------------------------------------
@@ -110,7 +146,7 @@ export default function MapWorkspace({ onPixelInspected }) {
       style: {
         version: 8,
         sources: {},
-        layers: [{ id: "bg", type: "background", paint: { "background-color": "#0B0F19" } }],
+        layers: [{ id: "bg", type: "background", paint: { "background-color": "#111111" } }],
       },
       center: [94.1, 26.9],
       zoom: 9,
@@ -124,21 +160,13 @@ export default function MapWorkspace({ onPixelInspected }) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 
-    map.on("click", async (e) => {
-      const { lat, lng } = e.lngLat;
-      const aoiId = useMissionStore.getState().activeAoiId;
-      setClickedPixel({ lat, lon: lng, status: "loading" });
-      setEvidenceCard(null);
-      inspectedCb.current?.();
-      const res = await api.inspect(aoiId, lat.toFixed(5), lng.toFixed(5));
-      setClickedPixel({ ...(res.data || {}), lat, lon: lng, status: res.status, warning: res.warning });
-      if (res.status === "ok") {
-        const card = await api.evidenceCard({ aoi_id: res.aoi_id, lat, lon: lng, telemetry: res.data });
-        setEvidenceCard(card.data?.card || null);
-      }
-    });
+    map.on("click", (e) => inspectRef.current(e.lngLat.lat, e.lngLat.lng));
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(containerRef.current);
     mapRef.current = map;
     return () => {
+      observer.disconnect();
+      requestRef.current += 1;
       map.remove();
       mapRef.current = null;
       readyRef.current = false;
@@ -149,8 +177,8 @@ export default function MapWorkspace({ onPixelInspected }) {
 
   // ---- basemap switch (via the ready-queue, so it never races the map "load") ----------
   useEffect(() => {
-    whenReady((map) => applyBasemap(map, basemap), "basemap");
-  }, [basemap]); // eslint-disable-line react-hooks/exhaustive-deps
+    whenReady((map) => applyBasemap(map, simple ? "satellite" : basemap), "basemap");
+  }, [basemap, simple]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- AOI boundary + fit ------------------------------------------------------------
   useEffect(() => {
@@ -178,35 +206,69 @@ export default function MapWorkspace({ onPixelInspected }) {
     const [w, s, e, n] = aoi.bounds;
     const coords = [[w, n], [e, n], [e, s], [w, s]];
     const dated = layerDef.dated;
-    const afterUrl = api.layerPngUrl(activeAoiId, activeLayer, dated ? activeDate : null);
-    const beforeUrl = compareDate ? api.layerPngUrl(activeAoiId, activeLayer, dated ? compareDate : null) : null;
+    const afterUrl = api.layerPngUrl(activeAoiId, renderedLayer, dated ? activeDate : null);
+    const beforeUrl = compareDate ? api.layerPngUrl(activeAoiId, renderedLayer, dated ? compareDate : null) : null;
 
+    let cancelled = false;
+    setLayerError(false);
     whenReady((map) => {
-      const setImage = (id, url, opacity, beforeId) => {
+      const setImage = async (id, url, opacity, beforeId) => {
+        if (cancelled) return;
+        const clearImage = () => {
+          if (map.getLayer(`${id}-layer`)) map.removeLayer(`${id}-layer`);
+          if (map.getSource(id)) map.removeSource(id);
+          delete lastImageRef.current[id];
+        };
         if (!url || !isRaster || connection === "OFFLINE") {
           if (map.getLayer(`${id}-layer`)) map.removeLayer(`${id}-layer`);
           if (map.getSource(id)) map.removeSource(id);
           delete lastImageRef.current[id];
           return;
         }
-        const sig = `${url}|${coords.flat().join(",")}`;
+        const sig = `${url}|${coords.flat().join(",")}|${simple}`;
+        if (lastImageRef.current[id] !== sig) {
+          try {
+            const image = new Image();
+            image.crossOrigin = "anonymous";
+            await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = url; });
+            if (cancelled) return;
+            if (image.width === 1 && image.height === 1) throw new Error("Layer pending");
+            if (simple && renderedLayer === "jrc_anomaly") {
+              const canvas = document.createElement("canvas");
+              canvas.width = image.width; canvas.height = image.height;
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(image, 0, 0);
+              const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              for (let i = 0; i < pixels.data.length; i += 4) {
+                if (pixels.data[i] > pixels.data[i + 1] * 1.4 && pixels.data[i] > pixels.data[i + 2] * 1.4) {
+                  pixels.data[i] = 255; pixels.data[i + 1] = 103; pixels.data[i + 2] = 31;
+                }
+              }
+              ctx.putImageData(pixels, 0, 0); url = canvas.toDataURL();
+            }
+          } catch { if (!cancelled) { clearImage(); setLayerError(true); } return; }
+        }
+        if (cancelled) return;
         if (map.getSource(id)) {
           if (lastImageRef.current[id] !== sig) map.getSource(id).updateImage({ url, coordinates: coords });
         } else {
           map.addSource(id, { type: "image", url, coordinates: coords });
+          const insertionId = id === "compare-overlay" && map.getLayer("active-overlay-layer")
+            ? "active-overlay-layer" : beforeId;
           map.addLayer(
             { id: `${id}-layer`, type: "raster", source: id, paint: { "raster-fade-duration": 0 } },
-            map.getLayer(beforeId) ? beforeId : undefined,
+            map.getLayer(insertionId) ? insertionId : undefined,
           );
         }
         lastImageRef.current[id] = sig;
         map.setPaintProperty(`${id}-layer`, "raster-opacity", opacity);
       };
       const comparing = Boolean(compareDate) && dated;
-      setImage("compare-overlay", comparing ? beforeUrl : null, (1 - compareMix) * OVERLAY_OPACITY, "aoi-boundary-line");
-      setImage("active-overlay", afterUrl, comparing ? compareMix * OVERLAY_OPACITY : OVERLAY_OPACITY, "aoi-boundary-line");
+      setImage("compare-overlay", comparing ? beforeUrl : null, (1 - compareMix) * layerOpacity, "aoi-boundary-line");
+      setImage("active-overlay", afterUrl, comparing ? compareMix * layerOpacity : layerOpacity, "aoi-boundary-line");
     }, "overlays");
-  }, [activeAoiId, activeLayer, activeDate, compareDate, compareMix, aoi, connection]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { cancelled = true; };
+  }, [activeAoiId, activeLayer, activeDate, compareDate, compareMix, aoi, connection, layerOpacity, simple]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- OSM inspection candidates (shared with the Inspection Log tab) -----------------
   useEffect(() => {
@@ -223,7 +285,7 @@ export default function MapWorkspace({ onPixelInspected }) {
 
   useEffect(() => {
     whenReady((map) => {
-      upsertGeojson(map, "exposure", showExposure && exposure?.geojson ? exposure.geojson : EMPTY_FC);
+      upsertGeojson(map, "exposure", !simple && showExposure && exposure?.geojson ? exposure.geojson : EMPTY_FC);
       if (!map.getLayer("exposure-lines")) {
         map.addLayer({
           id: "exposure-lines", type: "line", source: "exposure",
@@ -237,14 +299,14 @@ export default function MapWorkspace({ onPixelInspected }) {
         });
       }
     });
-  }, [exposure, showExposure]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [exposure, showExposure, simple]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- regional context layer (vector) -----------------------------------------------
   useEffect(() => {
     let cancelled = false;
     (async () => {
       let data = EMPTY_FC;
-      if (activeLayer === "context_layers" && connection !== "OFFLINE") {
+      if (!simple && activeLayer === "context_layers" && connection !== "OFFLINE") {
         const res = await api.context(activeAoiId);
         data = res.data?.geojson || EMPTY_FC;
       }
@@ -260,7 +322,7 @@ export default function MapWorkspace({ onPixelInspected }) {
     return () => {
       cancelled = true;
     };
-  }, [activeAoiId, activeLayer, connection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeAoiId, activeLayer, connection, simple]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- clicked pixel marker -------------------------------------------------------------
   useEffect(() => {
@@ -272,7 +334,7 @@ export default function MapWorkspace({ onPixelInspected }) {
       if (!map.getLayer("clicked-point")) {
         map.addLayer({
           id: "clicked-point", type: "circle", source: "clicked",
-          paint: { "circle-radius": 7, "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": "#F47216", "circle-stroke-width": 3 },
+          paint: { "circle-radius": 7, "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": "#FF671F", "circle-stroke-width": 3 },
         });
       }
     });
@@ -286,17 +348,27 @@ export default function MapWorkspace({ onPixelInspected }) {
   const otherDates = timeline.filter((t) => t.date !== activeDate);
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" data-testid="map" />
+    <div className="flex h-full min-h-[420px] w-full flex-col lg:min-h-0">
+      <div className="flex flex-wrap gap-2 border-b border-grid bg-panel p-2 text-xs">
+      <form className="flex flex-wrap items-center gap-2" onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); inspectRef.current(Number(values.get("lat")), Number(values.get("lon"))); }}>
+        <label>Latitude <input name="lat" aria-label="Latitude" type="number" min="-90" max="90" step="any" required className="w-20 rounded border border-grid bg-orbital px-1" /></label>
+        <label>Longitude <input name="lon" aria-label="Longitude" type="number" min="-180" max="180" step="any" required className="w-20 rounded border border-grid bg-orbital px-1" /></label>
+        <button className="rounded border border-grid px-2 py-1">Inspect location</button>
+      </form>
+      {(layerError || (connection === "OFFLINE" && isRaster)) && <span role="status" className="text-isro">Layer unavailable</span>}
+      </div>
+      <div className="relative min-h-[360px] flex-1 lg:min-h-0">
+      <div ref={containerRef} className="absolute inset-0" data-testid="map" />
 
       {/* Layer toggles */}
-      <div className="absolute left-3 top-3 w-56 space-y-1 rounded border border-grid bg-panel/90 p-2 text-xs telemetry-mono">
+      <div className="absolute left-3 top-3 max-h-[60%] w-48 overflow-y-auto space-y-1 rounded border border-grid bg-panel/90 p-2 text-xs telemetry-mono">
         {available.map((l) => (
           <button
+            aria-pressed={activeLayer === l.id}
             key={l.id}
             onClick={() => setActiveLayer(l.id)}
             className={`flex w-full items-center gap-2 rounded px-2 py-1 ${
-              activeLayer === l.id ? "bg-nasa/40 text-cyan" : "text-slate-300 hover:bg-grid"
+              activeLayer === l.id ? "border-l-2 border-cyan bg-nasa/40 font-bold text-cyan" : "text-slate-300 hover:bg-grid"
             }`}
           >
             <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: l.color }} />
@@ -304,15 +376,20 @@ export default function MapWorkspace({ onPixelInspected }) {
             {!l.dated && !simple && <span className="ml-auto text-[9px] text-slate-500">SEASON</span>}
           </button>
         ))}
+        {!simple && <>
         <label className="flex items-center gap-2 border-t border-grid px-2 pt-2 text-slate-300">
           <input type="checkbox" checked={showExposure} onChange={(e) => setShowExposure(e.target.checked)} />
           <span className="h-3 w-3 rounded-sm bg-alert" /> Inspection candidates
         </label>
 
+        <label className="block border-t border-grid px-2 pt-2 text-slate-300">Layer opacity {Math.round(layerOpacity * 100)}%
+          <input aria-label="Layer opacity" type="range" min="0" max="1" step="0.05" value={layerOpacity} onChange={(e) => setLayerOpacity(Number(e.target.value))} className="w-full" />
+        </label>
+        <p className="px-2 text-xs text-slate-300">Classification thresholds are precomputed per scene; values are shown in Scene &amp; Validation.</p>
         {/* Before / after comparison */}
         {layerDef.dated && (
           <div className="space-y-1 border-t border-grid px-2 pt-2 text-slate-300">
-            <div className="text-[10px] uppercase text-slate-500">Before / after</div>
+            <div className="text-xs uppercase text-slate-400">Before / after</div>
             <select
               aria-label="Compare with date"
               value={compareDate || ""}
@@ -332,7 +409,7 @@ export default function MapWorkspace({ onPixelInspected }) {
                   onChange={(e) => setCompareMix(Number(e.target.value))}
                   className="w-full accent-isro"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500">
+                <div className="flex justify-between text-xs text-slate-400">
                   <span>{compareDate}</span>
                   <span>{activeDate}</span>
                 </div>
@@ -340,25 +417,27 @@ export default function MapWorkspace({ onPixelInspected }) {
             )}
           </div>
         )}
+        </>}
       </div>
 
-      {/* Basemap switcher (bottom-left) */}
-      <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 rounded border border-grid bg-panel/90 p-1 text-[10px] telemetry-mono">
-        <span className="px-1 py-1 text-slate-500">BASEMAP</span>
+      </div>
+      {/* Basemap switcher stays outside the map controls and attribution. */}
+      {!simple && <div className="flex flex-wrap gap-1 border-t border-grid bg-panel p-2 text-xs telemetry-mono">
+        <span className="px-1 py-1 text-slate-400">BASEMAP</span>
         {Object.entries(BASEMAPS).map(([id, d]) => (
           <button
+            aria-pressed={basemap === id}
             key={id}
             onClick={() => setBasemap(id)}
             className={`rounded px-2 py-1 ${
-              basemap === id ? "bg-isro/30 text-isro" : "text-slate-300 hover:bg-grid"
+              basemap === id ? "border-b-2 border-isro bg-isro/30 font-bold text-isro" : "text-slate-300 hover:bg-grid"
             }`}
           >
             {d.label}
           </button>
         ))}
-      </div>
-
-      <Legend layer={activeLayer} simple={simple} />
+      </div>}
+      <Legend layer={renderedLayer} simple={simple} />
     </div>
   );
 }
@@ -389,7 +468,7 @@ function Legend({ layer, simple }) {
     body = (
       <>
         <div className="h-2 w-40 rounded" style={{ background: "linear-gradient(90deg,#FDE68A,#C2410C)" }} />
-        <div className="flex justify-between text-[10px] text-slate-400"><span>wet 1 obs</span><span>wet every obs (M=N)</span></div>
+        <div className="flex justify-between text-xs text-slate-400"><span>wet 1 obs</span><span>wet every obs (M=N)</span></div>
       </>
     );
   } else if (layer === "gmm_regimes") {
@@ -416,7 +495,7 @@ function Legend({ layer, simple }) {
     body = <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-water" />Open water (HH &amp; HV below Otsu τ)</div>;
   }
   return (
-    <div className="absolute right-3 top-3 max-w-xs space-y-1 rounded border border-grid bg-panel/90 p-2 text-[11px] telemetry-mono text-slate-300">
+    <div className="space-y-1 border-t border-grid bg-panel p-2 text-xs telemetry-mono text-slate-300">
       {body}
     </div>
   );
