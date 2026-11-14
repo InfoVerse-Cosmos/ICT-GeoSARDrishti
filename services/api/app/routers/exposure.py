@@ -37,7 +37,22 @@ def exposure(aoi_id: str) -> dict:
             warning="No exposure pack found yet (generated in Phase 2 via scripts/04).",
         )
 
-    fc = json.loads(geojson_path.read_text())
+    try:
+        fc = json.loads(geojson_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return envelope(
+            {"geojson": {"type": "FeatureCollection", "features": []}, "ranked": [],
+             "note": "Ground-inspection candidates only, never a damage claim."},
+            aoi_id=aoi_id, fallback_active=True, warning="osm_exposure.geojson is not valid JSON.",
+        )
+
+    def centroid(geom):
+        """Rough [lon, lat] to fly the map to (first/middle vertex)."""
+        coords = (geom or {}).get("coordinates")
+        while isinstance(coords, list) and coords and isinstance(coords[0], list):
+            coords = coords[len(coords) // 2]
+        return coords if isinstance(coords, list) and len(coords) == 2 else None
+
     ranked = sorted(
         (
             {
@@ -46,17 +61,22 @@ def exposure(aoi_id: str) -> dict:
                 "name": f["properties"].get("name", "unnamed"),
                 "wet_observations": f["properties"].get("wet_observations"),
                 "total_observations": f["properties"].get("total_observations"),
+                "wet_dates": f["properties"].get("wet_dates", []),
+                "center": centroid(f.get("geometry")),
             }
             for f in fc.get("features", [])
         ),
         key=lambda r: (r["wet_observations"] or 0),
         reverse=True,
     )
+    meta = fc.get("_meta", {})
     return envelope(
         {
             "geojson": fc,
             "ranked": ranked,
-            "note": "Ground-inspection candidates only, never a damage claim.",
+            "threshold": meta.get("threshold"),
+            "source": meta.get("source"),
+            "note": meta.get("note") or "Ground-inspection candidates only, never a damage claim.",
         },
         aoi_id=aoi_id,
     )

@@ -1,12 +1,17 @@
 # GeoSAR Drishti — offline data gate & processing (run on dev machines, not deployed)
-earthaccess==0.12.0
-h5py==3.12.1
-rasterio==1.4.3
-numpy==2.1.3
-scipy==1.14.1
-scikit-learn==1.5.2
-scikit-image==0.24.0          # Otsu thresholding
-geopandas==1.0.1
-osmnx==1.9.4
-shapely==2.0.6
-pillow==11.0.0                # RGBA PNG overlays
+# Core (stages 01-02): read GCOV HDF5, reproject AOI grid
+numpy>=2.1
+h5py>=3.12
+pyproj>=3.7
+# Stage 01 --search / --download
+earthaccess>=0.12
+# Stage 03 GMM regimes
+scikit-learn>=1.5
+# Optional ancillary GeoTIFFs (WorldCover / JRC / DSWx / DEM) for stages 02-03
+rasterio>=1.4
+# Stage 04 OSM exposure
+geopandas>=1.0
+osmnx>=1.9
+shapely>=2.0
+# Tests
+pytest>=8

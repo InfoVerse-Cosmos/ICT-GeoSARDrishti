@@ -68,6 +68,7 @@ def health() -> dict:
             "earthdata_token_configured": settings.earthdata_enabled,
             "llm_narrator_enabled": settings.llm_enabled,
             "data_store_fallback": store.using_fallback,
+            "data_packs": {a["aoi_id"]: store.pack_status(a["aoi_id"]) for a in store.list_aois()},
         },
         source_mode="LIVE_API",
     )

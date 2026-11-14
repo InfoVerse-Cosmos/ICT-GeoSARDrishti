@@ -2,13 +2,15 @@ import { useMissionStore } from "@/store/useMissionStore.js";
 
 // Top Mission Bar (SRS §4.2.1): NISAR identity, dual-AOI selector, status pills.
 export default function TopTelemetryBar({ onOpenProvenance }) {
-  const { aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive } =
+  const { aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive, timelineMeta } =
     useMissionStore();
 
   const current = timeline.find((t) => t.date === activeDate) || timeline[timeline.length - 1];
+  const pol = current?.polarization || timelineMeta.polarization || "HH+HV";
+  const singlePol = timelineMeta.single_pol_mode || pol === "HH";
 
   return (
-    <header className="flex items-center gap-4 border-b border-grid bg-panel px-4 py-2">
+    <header className="flex flex-wrap items-center gap-4 border-b border-grid bg-panel px-4 py-2">
       <div className="flex items-center gap-2">
         <span className="rounded bg-nasa px-2 py-1 text-xs font-bold text-white">NASA–ISRO</span>
         <span className="telemetry-mono text-sm font-semibold text-cyan">NISAR · GeoSAR Drishti</span>
@@ -16,6 +18,7 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
 
       {/* Dual-AOI selector */}
       <select
+        aria-label="Area of interest"
         value={activeAoiId}
         onChange={(e) => setActiveAoi(e.target.value)}
         className="rounded border border-grid bg-orbital px-2 py-1 text-xs telemetry-mono"
@@ -27,14 +30,19 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
         ))}
       </select>
 
-      <div className="flex flex-1 items-center gap-2 text-[11px] telemetry-mono">
-        <Pill label={current?.granule_id ? `GRANULE ${current.granule_id}` : "GRANULE —"} />
+      <div className="flex flex-1 flex-wrap items-center gap-2 text-[11px] telemetry-mono">
+        <Pill
+          label={current?.granule_id ? `GRANULE ${shortGranule(current.granule_id)}` : "GRANULE —"}
+          title={current?.granule_id}
+        />
         <Pill label={current?.track_frame ? `T/F ${current.track_frame}` : "T/F —"} />
-        <Pill label={current?.polarization || "HH+HV"} tone="nasa" />
+        <Pill label={singlePol ? "SINGLE-POL HH" : pol} tone={singlePol ? "isro" : "nasa"} />
         <Pill
           label={current?.maturity || "PROVISIONAL"}
           tone={current?.maturity === "VALIDATED" ? "cyan" : "isro"}
         />
+        {timelineMeta.fallback_plan && <Pill label={`PLAN ${timelineMeta.fallback_plan}`} title="SRS §3.3 fallback ladder" />}
+        {timelineMeta.synthetic_test_data && <Pill label="SYNTHETIC TEST DATA" tone="alert" />}
       </div>
 
       <ConnectionPill connection={connection} fallbackActive={fallbackActive} />
@@ -48,9 +56,25 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
   );
 }
 
-function Pill({ label, tone }) {
-  const tones = { nasa: "bg-nasa/40 text-cyan", cyan: "bg-cyan/20 text-cyan", isro: "bg-isro/20 text-isro" };
-  return <span className={`rounded px-2 py-0.5 ${tones[tone] || "bg-orbital text-slate-300"}`}>{label}</span>;
+// Real granule IDs are ~100 chars; keep the identifying middle part in the pill.
+function shortGranule(id) {
+  if (!id || id.length <= 28) return id;
+  const m = id.match(/GCOV_(\d{3}_\d{3}_[AD]_\d{3}).*?_(\d{8})T/);
+  return m ? `${m[1]} · ${m[2]}` : `${id.slice(0, 24)}…`;
+}
+
+function Pill({ label, tone, title }) {
+  const tones = {
+    nasa: "bg-nasa/40 text-cyan",
+    cyan: "bg-cyan/20 text-cyan",
+    isro: "bg-isro/20 text-isro",
+    alert: "bg-alert/20 text-alert",
+  };
+  return (
+    <span title={title} className={`rounded px-2 py-0.5 ${tones[tone] || "bg-orbital text-slate-300"}`}>
+      {label}
+    </span>
+  );
 }
 
 function ConnectionPill({ connection, fallbackActive }) {
