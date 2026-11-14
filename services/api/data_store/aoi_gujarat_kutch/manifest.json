@@ -1,0 +1,153 @@
+{
+  "aoi_id": "aoi_gujarat_kutch",
+  "name": "Rann of Kutch / Banni, Gujarat",
+  "role": "NISAR GCOV dual-track hydroperiod (Gujarat / Rann of Kutch)",
+  "bounds": [
+    68.95,
+    23.44,
+    74.1,
+    26.18
+  ],
+  "default_zoom": 7,
+  "polarization": "HH+HV",
+  "track_frame": "T063+T135/F076",
+  "fallback_plan": "A",
+  "layers": [
+    "open_water",
+    "flooded_veg",
+    "hydroperiod",
+    "gmm_regimes"
+  ],
+  "acquisition_gaps": [],
+  "timeline": [
+    {
+      "date": "2026-10-04",
+      "granule_id": "NISAR_L2_PR_GCOV_032_063_D_076_2005_DHDH_M_20261004T135735_20261004T135809_P05023_N_F_J_001",
+      "track_frame": "T63/F76",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL"
+    },
+    {
+      "date": "2026-10-09",
+      "granule_id": "NISAR_L2_PR_GCOV_032_135_D_076_2005_DHDH_M_20261009T134915_20261009T134950_P05023_N_F_J_001",
+      "track_frame": "T135/F76",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL"
+    },
+    {
+      "date": "2026-10-16",
+      "granule_id": "NISAR_L2_PR_GCOV_033_063_D_076_2005_DHDH_M_20261016T135735_20261016T135809_P05023_N_F_J_001",
+      "track_frame": "T63/F76",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL"
+    },
+    {
+      "date": "2026-11-02",
+      "granule_id": "NISAR_L2_PR_GCOV_034_135_D_076_2005_DHDH_M_20261102T134916_20261102T134950_P05036_N_F_J_001",
+      "track_frame": "T135/F76",
+      "polarization": "HH+HV",
+      "maturity": "VALIDATED"
+    }
+  ],
+  "provenance": {
+    "granules": [
+      {
+        "granule_id": "NISAR_L2_PR_GCOV_032_063_D_076_2005_DHDH_M_20261004T135735_20261004T135809_P05023_N_F_J_001",
+        "product_version": "1.0.11",
+        "bbox": [
+          68.9643,
+          23.4786,
+          71.987,
+          26.1426
+        ],
+        "maturity": "PROVISIONAL",
+        "note": "Maturity is the ASF/Vertex catalog label; the GCOV HDF5 product carries no productMaturity field."
+      },
+      {
+        "granule_id": "NISAR_L2_PR_GCOV_032_135_D_076_2005_DHDH_M_20261009T134915_20261009T134950_P05023_N_F_J_001",
+        "product_version": "1.0.11",
+        "bbox": [
+          71.0362,
+          23.4495,
+          74.0947,
+          26.1759
+        ],
+        "maturity": "PROVISIONAL",
+        "note": "Maturity is the ASF/Vertex catalog label; the GCOV HDF5 product carries no productMaturity field."
+      },
+      {
+        "granule_id": "NISAR_L2_PR_GCOV_033_063_D_076_2005_DHDH_M_20261016T135735_20261016T135809_P05023_N_F_J_001",
+        "product_version": "1.0.11",
+        "bbox": [
+          68.9773,
+          23.4921,
+          72.0071,
+          26.1578
+        ],
+        "maturity": "PROVISIONAL",
+        "note": "Maturity is the ASF/Vertex catalog label; the GCOV HDF5 product carries no productMaturity field."
+      },
+      {
+        "granule_id": "NISAR_L2_PR_GCOV_034_135_D_076_2005_DHDH_M_20261102T134916_20261102T134950_P05036_N_F_J_001",
+        "product_version": "1.0.20",
+        "bbox": [
+          71.0509,
+          23.4994,
+          74.0924,
+          26.1668
+        ],
+        "maturity": "VALIDATED",
+        "note": "Maturity is the ASF/Vertex catalog label; the GCOV HDF5 product carries no productMaturity field."
+      }
+    ],
+    "otsu_thresholds": {
+      "2026-10-04": {
+        "otsu_hh_db": -17.166,
+        "hv_thresh_db": -22.914
+      },
+      "2026-10-09": {
+        "otsu_hh_db": -16.357,
+        "hv_thresh_db": -16.966
+      },
+      "2026-10-16": {
+        "otsu_hh_db": -17.447,
+        "hv_thresh_db": -23.043
+      },
+      "2026-11-02": {
+        "otsu_hh_db": -16.744,
+        "hv_thresh_db": -17.071
+      }
+    },
+    "delta_hh_params": {
+      "min_delta_hh_db": 3.0,
+      "min_delta_ratio_db": 1.5
+    },
+    "opera_dswx_agreement_pct": null,
+    "software": {
+      "dest_grid": "EPSG:4326 548x1030 @ 0.005 deg, north-up, spanning AOI bounds",
+      "speckle_filter": "3x3 median on linear power",
+      "veg_hv_floor_db": -18.0,
+      "veg_proxy_note": "veg_mask is a SAR HV-backscatter proxy (HV_ref >= -18 dB), NOT ESA WorldCover.",
+      "dry_reference": {
+        "63": "2026-10-16",
+        "135": "2026-11-02"
+      },
+      "note": "Windowed h5py reads; per-track \u0394HH baseline; dynamic Otsu per scene."
+    },
+    "context_sources": [],
+    "limitations": [
+      "Radar-derived surface-water indication for inspection, not confirmed flood depth.",
+      "Hydroperiod expressed as M of N valid NISAR observations (per-pixel N, not a uniform 4-date series).",
+      "OPERA DSWx / JRC Global Surface Water / ESA WorldCover cross-validation is degraded (null/empty) for this AOI; no agreement numbers are fabricated.",
+      "Maturity reflects the ASF/Vertex catalog label for each granule; the GCOV HDF5 product has no productMaturity field."
+    ],
+    "gmm_regimes": [
+      "Permanent River / Deep Channel",
+      "Seasonal Open Floodplain / Beel",
+      "Seasonally Flooded Canopy / Tall Grassland",
+      "Seasonal Paddy-Like Inundation Cycle",
+      "Stable Dry Upland / Levee"
+    ],
+    "validation_note": "OPERA DSWx-S1/NI agreement, JRC Global Surface Water occurrence, and ESA WorldCover cross-validation are intentionally null for this AOI: no local auxiliary datasets and no assured network. jrc/worldcover cube planes are omitted (the sampler returns null). No agreement numbers are fabricated."
+  }
+}

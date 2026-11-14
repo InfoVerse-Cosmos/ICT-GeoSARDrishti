@@ -85,7 +85,9 @@ export default function ProvenanceModal({ open, onClose }) {
             </Section>
             <Section title="OPERA DSWx inter-sensor agreement">
               <span className="telemetry-mono text-cyan">
-                {prov.opera_dswx_agreement_pct ?? "—"}% (inter-sensor agreement, not ground-truth accuracy)
+                {prov.opera_dswx_agreement_pct != null
+                  ? `${prov.opera_dswx_agreement_pct}% (inter-sensor agreement, not ground-truth accuracy)`
+                  : "not loaded (no OPERA DSWx tile supplied)"}
               </span>
             </Section>
             <Section title="ΔHH double-bounce parameters">
@@ -100,6 +102,9 @@ export default function ProvenanceModal({ open, onClose }) {
                     <li key={d}>{d}: τHH {t.hh_db} dB{t.hv_db != null ? ` · τHV ${t.hv_db} dB` : ""}</li>
                   ))}
                 </ul>
+                {prov.threshold_method && (
+                  <p className="mt-1 text-[11px] text-slate-400">{prov.threshold_method}</p>
+                )}
               </Section>
             )}
             {prov.calibration_check && (

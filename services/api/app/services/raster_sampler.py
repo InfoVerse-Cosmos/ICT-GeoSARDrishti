@@ -118,6 +118,8 @@ def sample_pixel(aoi_id: str, lat: float, lon: float) -> dict[str, Any]:
     hh_cube = cube["hh_db"]  # (T, rows, cols)
     T = hh_cube.shape[0]
     dates = [str(d) for d in cube["dates"]] if "dates" in cube else _manifest_dates(manifest)[:T]
+    if len(dates) != T:  # cube/manifest mismatch: never crash a live demo, label the unknown steps
+        dates = [dates[i] if i < len(dates) else f"t{i + 1}" for i in range(T)]
     row, col = _latlon_to_rc(lat, lon, bounds, hh_cube.shape[1:])
 
     hh = [_f(v) for v in hh_cube[:, row, col]]
@@ -163,7 +165,8 @@ def sample_pixel(aoi_id: str, lat: float, lon: float) -> dict[str, Any]:
             "jrc_occurrence_pct": _f(cube["jrc"][row, col]) if "jrc" in cube else None,
             "worldcover_class": wc,
             "flooded_veg_sublabel": (("Paddy-Like Agricultural Inundation" if wc == WC_CROPLAND
-                                      else "Natural Flooded Vegetation") if m_fveg else None),
+                                      else "Natural Flooded Vegetation") if (m_fveg and wc is not None) else None),
+            # (no land-cover sub-label unless the ESA WorldCover layer was supplied to the pipeline)
             "single_pol_mode": "hv_db" not in cube,
             "synthetic_test_data": bool(manifest.get("synthetic_test_data")),
             **evidence,

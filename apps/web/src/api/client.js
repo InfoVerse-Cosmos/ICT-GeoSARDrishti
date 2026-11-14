@@ -66,4 +66,5 @@ export const api = {
   evidenceCard: (payload) => request("/evidence-card", { method: "POST", body: payload, timeoutMs: 4000 }),
   exposure: (aoiId) => request(`/aois/${aoiId}/exposure`),
   provenance: (aoiId) => request(`/aois/${aoiId}/provenance`),
+  report: (aoiId) => request(`/aois/${aoiId}/report`),
 };

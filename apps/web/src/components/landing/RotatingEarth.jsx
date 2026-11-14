@@ -38,6 +38,7 @@ const FRAGMENT = `
 
 export default function RotatingEarth() {
   const canvasRef = useRef(null);
+  const satelliteRef = useRef(null);
   const runningRef = useRef(false);
   const hoveredRef = useRef(false);
   const [running, setRunning] = useState(false);
@@ -60,6 +61,7 @@ export default function RotatingEarth() {
     let disposed = false;
     let visible = true;
     let rotation = 0.18; // Start with Africa / the Indian Ocean in view.
+    let orbit = -0.65;
     let previousTime = 0;
     let lastDrawnRotation = null;
     const resources = [];
@@ -100,7 +102,20 @@ export default function RotatingEarth() {
     const draw = time => {
       if (disposed || gl.isContextLost()) return;
       if (visible && !document.hidden) {
-        if (runningRef.current && !hoveredRef.current && previousTime) rotation = (rotation + Math.min(time - previousTime, 50) * 1.1025 / 90000) % 1;
+        if (runningRef.current && !hoveredRef.current && previousTime) {
+          const elapsed = Math.min(time - previousTime, 50);
+          rotation = (rotation + elapsed * 1.1025 / 90000) % 1;
+          orbit = (orbit + elapsed * Math.PI * 2 / 24000) % (Math.PI * 2);
+        }
+        // Project a tilted orbit; the rear half passes behind the globe.
+        const x = 61 * Math.cos(orbit);
+        const y = 23 * Math.sin(orbit);
+        const satellite = satelliteRef.current;
+        if (satellite) {
+          satellite.style.left = `${50 + x * 0.866 + y * 0.5}%`;
+          satellite.style.top = `${50 - x * 0.5 + y * 0.866}%`;
+          satellite.style.zIndex = Math.sin(orbit) < 0 ? '-1' : '2';
+        }
         const size = Math.min(1200, Math.round(canvas.clientWidth * Math.min(window.devicePixelRatio || 1, 1.5)));
         const resized = canvas.width !== size || canvas.height !== size;
         if (resized) {
@@ -173,8 +188,20 @@ export default function RotatingEarth() {
 
   return <>
     <div className={`earth-globe ${ready ? 'is-ready' : ''}`}>
+      <svg className="earth-orbit" viewBox="0 0 100 100" aria-hidden="true">
+        <ellipse cx="50" cy="50" rx="61" ry="23" transform="rotate(-30 50 50)" />
+      </svg>
       <img src="/images/earth-eastern-hemisphere.jpg" alt="Earth viewed from space" aria-hidden={ready} width="1600" height="900" fetchpriority="high" className="earth-fallback" />
       <canvas ref={canvasRef} role="img" aria-hidden={!ready} aria-label="Three-dimensional Earth visualization using NASA Blue Marble imagery" />
+      <svg ref={satelliteRef} className="earth-satellite" viewBox="0 0 64 40" aria-hidden="true">
+        <g transform="rotate(-15 32 20)">
+          <path className="satellite-panels" d="M2 13h19v14H2z M43 13h19v14H43z" />
+          <path className="satellite-cells" d="M8 13v14m7-14v14M2 20h19m28-7v14m7-14v14M43 20h19" />
+          <path className="satellite-body" d="M26 11h12v19H26z M21 18h5v4h-5z M38 18h5v4h-5z" />
+          <path className="satellite-dish" d="M27 8q5-10 10 0z M32 8v3" />
+          <path className="satellite-antenna" d="M32 30v7m-3 0h6" />
+        </g>
+      </svg>
     </div>
   </>;
 }

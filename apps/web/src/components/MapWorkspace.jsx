@@ -3,6 +3,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { api } from "@/api/client.js";
 import { LAYERS, REGIME_LEGEND, useMissionStore } from "@/store/useMissionStore.js";
+import { SIMPLE_LAYER_IDS, plainLayerLabel } from "@/plain.js";
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
@@ -112,8 +113,8 @@ export default function MapWorkspace({ onPixelInspected }) {
 
   const aoi = aois.find((a) => a.aoi_id === activeAoiId);
   const simple = audienceMode === "simple";
-  const available = LAYERS.filter((l) => (!aoi?.layers || aoi.layers.includes(l.id)) && (!simple || ["open_water", "jrc_anomaly"].includes(l.id)));
-  const renderedLayer = simple && activeLayer !== "jrc_anomaly" ? "open_water" : activeLayer;
+  const available = LAYERS.filter((l) => (!aoi?.layers || aoi.layers.includes(l.id)) && (!simple || SIMPLE_LAYER_IDS.includes(l.id)));
+  const renderedLayer = simple && !SIMPLE_LAYER_IDS.includes(activeLayer) ? "open_water" : activeLayer;
   const layerDef = LAYERS.find((l) => l.id === renderedLayer) || LAYERS[0];
   const isRaster = layerDef.id !== "context_layers";
 
@@ -370,9 +371,9 @@ export default function MapWorkspace({ onPixelInspected }) {
               activeLayer === l.id ? "border-l-2 border-cyan bg-nasa/40 font-bold text-cyan" : "text-slate-300 hover:bg-grid"
             }`}
           >
-            <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: simple && l.id === "jrc_anomaly" ? "#FF671F" : l.color }} />
-            {simple ? (l.id === "open_water" ? "Water" : "Newly-flooded indications") : l.label}
-            {!simple && !l.dated && <span className="ml-auto text-[9px] text-slate-400">SEASON</span>}
+            <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: l.color }} />
+            {simple ? plainLayerLabel(l.id) : l.label}
+            {!l.dated && !simple && <span className="ml-auto text-[9px] text-slate-500">SEASON</span>}
           </button>
         ))}
         {!simple && <>
@@ -436,13 +437,33 @@ export default function MapWorkspace({ onPixelInspected }) {
           </button>
         ))}
       </div>}
-      {simple ? <div className="border-t border-grid bg-panel p-2 text-xs text-slate-200">Blue: water; Orange: newly-flooded indications (historically uncommon water, season summary)</div> : <Legend layer={activeLayer} />}
+      <Legend layer={renderedLayer} simple={simple} />
     </div>
   );
 }
 
-function Legend({ layer }) {
+function Legend({ layer, simple }) {
   let body = null;
+  if (simple) {
+    if (layer === "hydroperiod") {
+      body = (
+        <>
+          <div className="h-2 w-40 rounded" style={{ background: "linear-gradient(90deg,#FDE68A,#C2410C)" }} />
+          <div className="flex justify-between text-[10px] text-slate-400"><span>wet once</span><span>wet every pass</span></div>
+          <div className="mt-1">Darker = water seen on more satellite passes.</div>
+        </>
+      );
+    } else if (layer === "flooded_veg") {
+      body = <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-fveg" />Water hidden under plants</div>;
+    } else {
+      body = <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-water" />Open water (seen from space)</div>;
+    }
+    return (
+      <div className="absolute right-3 top-3 max-w-xs space-y-1 rounded border border-grid bg-panel/90 p-2 text-[11px] text-slate-300">
+        {body}
+      </div>
+    );
+  }
   if (layer === "hydroperiod") {
     body = (
       <>
@@ -457,8 +478,8 @@ function Legend({ layer }) {
   } else if (layer === "flooded_veg") {
     body = (
       <>
-        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-fveg" />Natural flooded vegetation</div>
-        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-paddy" />Paddy-like agricultural inundation</div>
+        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-fveg" />Possible flooded vegetation (HH surge ≥ +3 dB vs dry reference)</div>
+        <div className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-sm bg-paddy" />Paddy-like: only when ESA WorldCover is loaded</div>
       </>
     );
   } else if (layer === "jrc_anomaly") {

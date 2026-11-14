@@ -43,7 +43,7 @@
 | # | Full Name | GitHub Username | Home Institution | Role |
 | :- | :-- | :-- | :-- | :-- |
 | 1 | Pravin Tawade | `@cosmosinfoverse` | _[institution]_ | Team Owner — architecture, L-band SAR physics, mission lead |
-| 2 | kaushik zade | `@kaushik7` | _[institution]_ | FastAPI backend, NASA `earthaccess` connector, offline raster processing |
+| 2 | Kaushik Zade | `@kaushik7` | _[institution]_ | FastAPI backend, NASA `earthaccess` connector, offline raster processing |
 | 3 | Sharv Dalal | `@shardstax` | _[institution]_ | Telemetry UI (React/MapLibre), monsoon time slider |
 | 4 | Himanshu Sharma | `@lunar_node` | _[institution]_ | NISAR L2 GCOV data gate, PROVISIONAL/VALIDATED calibration, OPERA/JRC validation |
 | 5 | Sakshi Manav Tayade | `@sakshitayade` | _[institution]_ | GMM regime clustering, ESA WorldCover, OSM exposure, Nagpur context |
@@ -66,7 +66,14 @@ services/api (Python 3.11 + FastAPI + Uvicorn + Rasterio + NumPy + earthaccess)
       └─ Local pre-computed AOI packs: COG/RGBA-PNG overlays, time_series_cube.npz, GeoJSON
 ```
 
-**Two pre-configured AOIs:** Majuli–Kaziranga (Assam, primary) · Kanhan–Pench (Nagpur, regional pilot).
+**Two pre-configured AOIs:** Majuli–Kaziranga (Assam, primary) · Kanhan–Pench (Nagpur, regional pilot). A third full pack, Rann of Kutch (Gujarat), renders end-to-end from four real NISAR GCOV granules.
+
+**Two audiences, one console.** A top-bar **Simple / Scientist** toggle switches the whole experience:
+
+- **Simple (default)** — satellite backdrop, plain result layers (*Open water*, *Water hidden under plants*, *Repeatedly wet areas*), a one-line plain "what happened here" on map click, and a **one-click Analysis Report** — no dB, Otsu thresholds, or granule/track jargon.
+- **Scientist** — the full telemetry console unchanged (per-scene Otsu/ΔHH thresholds, dB trajectories, granule/track-frame/polarization/maturity pills, provenance).
+
+The **Analysis Report** (📊 button, either mode) summarises the current AOI in plain language — where water was, hydroperiod (M of N), what changed between passes (computed *within* a single track, since NISAR images an AOI from more than one track), which roads/settlements are inspection candidates — grounded strictly in computed numbers, with the honest caveat and a provenance footer (granules, dates, thresholds).
 
 **Scientific pipeline (100% deterministic math):** γ⁰ HH/HV subset → validity + DEM-slope masks → speckle filter + dB conversion (`Ratio_dB = HH_dB − HV_dB`) → per-date 3-class classifier (Otsu open water, ΔHH double-bounce flooded vegetation, dry) → M-of-N hydroperiod → unsupervised GMM regimes → OPERA DSWx / JRC validation → OSM exposure.
 
@@ -88,7 +95,9 @@ Full design: [`Docs/geosar_intelligence_srs_and_implementation_blueprint.md`](Do
 
 - **Live app:** _TBD_ (also pinned at the top of this README)
 - **Demo video:** _TBD (optional)_
-- **Screenshots:** _add to `Docs/screenshots/` and embed here before the freeze_
+- **Screenshots:** stored in `assets/screenshots/` (tracked in-repo)
+
+![GeoSAR Drishti UI overview](assets/screenshots/ui-overview.png)
 
 ```text
 [ Top mission bar: NISAR · dual-AOI selector · granule/track/pol/maturity pills · LIVE API / LOCAL CACHE ]
@@ -141,6 +150,32 @@ npm run dev
 ```
 
 **Deploy.** API: `uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}` on Render/Railway/Cloud Run (set `EARTHDATA_TOKEN`, `CORS_ORIGINS`, optional `LLM_API_KEY`). Web: build `apps/web` (`npm run build`, output `dist`) on GitHub Pages / Vercel / Netlify with `VITE_API_BASE_URL` pointed at the API.
+
+### Bring your own data (analyse your own NISAR area)
+
+The project is open source: clone it (or download the ZIP and extract it) and analyse **your own area** from **your own** NISAR L2 GCOV granules — no bounding box, config, or code editing needed. The one command wraps the same pipeline (`scripts/geosar_pipeline`) that produced the shipped packs.
+
+**1. Get NISAR L2 GCOV granules** for your area and monsoon window (it is your responsibility to obtain the data). Download the `.h5` files from either source — both distribute the same NISAR GCOV product:
+- **NASA Earthdata / ASF** — <https://search.earthdata.nasa.gov/> (collections `NISAR_L2_GCOV_PROVISIONAL_V1`, `NISAR_L2_GCOV_V1`)
+- **ISRO Bhoonidhi** — <https://bhoonidhi.nrsc.gov.in/>
+
+**2. Drop the `.h5` files into the `DATA/` folder** at the repo root (see [`DATA/README.md`](DATA/README.md)). No unzip or rename needed. They are large and stay only on your machine — git never commits them.
+
+**3. Run one command** from the repo root:
+```bash
+./analyze.sh        # macOS / Linux
+analyze.bat         # Windows
+```
+It auto-detects the area from your granules' footprints, builds the analysis pack, and starts the app. On first run it also creates a small processing environment and installs the dependencies.
+
+**4. Open <http://localhost:5173>** and pick your area in the top-bar selector. Open the **📊 Analysis Report** for a plain-language summary, or flip to **Scientist** mode for the full console.
+
+> **Under the hood (two folders):** you drop raw granules into `DATA/` (input); the command processes them into a small pack under `services/api/data_store/<aoi-id>/` (`manifest.json`, `time_series_cube.npz`, `overlays/*.png`) which the app auto-loads on startup. You never edit anything inside `services/`.
+>
+> **Advanced / manual:** call the builder directly for custom ids, areas, or extra layers —
+> `python scripts/byod_build_aoi.py --aoi-id aoi_my_delta --name "My Delta" --bbox w,s,e,n --h5-dir /path --with-regimes --osm-file my_area.geojson` (see `--help`). Requires `pip install -r scripts/requirements.txt`.
+>
+> **Honest framing applies to every pack:** results are a radar-derived surface/canopy-water indication for field inspection — not a confirmed flood, depth, or damage claim. Hydroperiod is reported as *M of N valid NISAR observations*, never "days flooded".
 
 ---
 

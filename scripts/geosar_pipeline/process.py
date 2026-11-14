@@ -6,7 +6,8 @@ from pathlib import Path
 import numpy as np
 
 from .common import (AOI_BOUNDS, MAX_SLOPE_DEG, MIN_DELTA_HH_DB, MIN_DELTA_RATIO_DB, OTSU_HH_RANGE_DB,
-                     OTSU_HV_RANGE_DB, WC_CROPLAND, WC_VEGETATION, aoi_grid, fallback_plan, load_manifest,
+                     OTSU_HV_RANGE_DB, OTSU_TAIL_HH_DB, OTSU_TAIL_HV_DB, WC_CROPLAND, WC_VEGETATION, aoi_grid,
+                     fallback_plan, load_manifest,
                      mask_to_rgba, now_iso, pixel_area_km2, sample_geotiff, save_manifest, select_best_track,
                      write_png)
 from .data_gate import granules_from_dir
@@ -95,8 +96,8 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
     cls = np.full((T, rows, cols), NODATA_CLASS, dtype=np.uint8)
     thresholds = {}
     for t in range(T):
-        t_hh = dynamic_threshold(hh[t][valid_static], OTSU_HH_RANGE_DB)
-        t_hv = dynamic_threshold(hv[t][valid_static], OTSU_HV_RANGE_DB) if dual_pol else None
+        t_hh = dynamic_threshold(hh[t][valid_static], OTSU_HH_RANGE_DB, OTSU_TAIL_HH_DB)
+        t_hv = dynamic_threshold(hv[t][valid_static], OTSU_HV_RANGE_DB, OTSU_TAIL_HV_DB) if dual_pol else None
         thresholds[dates[t]] = {"hh_db": round(t_hh, 2), "hv_db": None if t_hv is None else round(t_hv, 2)}
         valid = np.isfinite(hh[t]) & np.isfinite(hh_ref) & valid_static
         if dual_pol:
@@ -142,8 +143,9 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
         metrics = {
             "open_water_km2": round(open_m.sum() * px_km2, 2),
             "flooded_veg_km2": round(fveg_m.sum() * px_km2, 2),
-            "paddy_like_km2": round(paddy_m.sum() * px_km2, 2),
-            "natural_flooded_veg_km2": round(natural_m.sum() * px_km2, 2),
+            # the natural / paddy split only exists when the ESA WorldCover layer was supplied
+            "paddy_like_km2": round(paddy_m.sum() * px_km2, 2) if wc is not None else None,
+            "natural_flooded_veg_km2": round(natural_m.sum() * px_km2, 2) if wc is not None else None,
             "dry_km2": round((c == DRY).sum() * px_km2, 2),
             "valid_pixel_pct": round(100.0 * valid_px / c.size, 1),
             "aoi_coverage_pct": coverage[g["date"]],
@@ -179,8 +181,8 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
     # ---- manifest ---------------------------------------------------------------------------
     # gmm_regimes / jrc_anomaly are re-added by stage 03 once their overlays exist.
     layers = ["open_water", "flooded_veg", "hydroperiod"]
-    if "context_layers" in manifest.get("layers", []):
-        layers.append("context_layers")
+    if "context_layers" in manifest.get("layers", []) and (aoi_dir / "context_layers.geojson").exists():
+        layers.append("context_layers")      # only offer the layer when its data file really exists
     manifest.update({
         "track_frame": tf,
         "polarization": "HH+HV" if dual_pol else "HH",
@@ -207,7 +209,10 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
         "reference_date": dates[ref_idx],
         "calibration_check": calibration,
         "masks": {"vegetation": veg_source, "slope": slope_source,
-                  "validity": "GCOV fill (mask==255), non-finite and γ0<=0 excluded"},
+                  "validity": "GCOV mask 0 (not fully focused) / 255 (outside swath), non-finite and γ0<=0 excluded"},
+        "threshold_method": (f"Otsu on the dark tail (HH<{OTSU_TAIL_HH_DB:g} dB, HV<{OTSU_TAIL_HV_DB:g} dB), "
+                             f"capped to HH {OTSU_HH_RANGE_DB[0]:g}..{OTSU_HH_RANGE_DB[1]:g} dB and "
+                             f"HV {OTSU_HV_RANGE_DB[0]:g}..{OTSU_HV_RANGE_DB[1]:g} dB so land/sand/wet soil is not called water"),
         "processing": {"generated_at": now_iso(), "grid_res_m": res_m, "speckle": "multilook + 3x3 median (linear)",
                        "crs_native": sorted(epsgs), "single_pol_mode": not dual_pol,
                        "pipeline": "scripts/02_subset_and_classify_sar.py"},

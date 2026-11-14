@@ -9,6 +9,8 @@ import EvidenceCardPanel from "@/components/EvidenceCardPanel.jsx";
 import ExposureTable from "@/components/ExposureTable.jsx";
 import ProvenanceModal from "@/components/ProvenanceModal.jsx";
 import ScenePanel from "@/components/ScenePanel.jsx";
+import ReportModal from "@/components/ReportModal.jsx";
+import SimplePanel from "@/components/SimplePanel.jsx";
 
 import ErrorBoundary from "@/components/ErrorBoundary.jsx";
 import SimpleSummary from "@/components/SimpleSummary.jsx";
@@ -34,6 +36,7 @@ function MissionApp() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
   const [provenanceOpen, setProvenanceOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [uplink, setUplink] = useState({ establishing: true, attempt: 0 });
   const offlineMirror = useRef(null);
 
@@ -89,7 +92,7 @@ function MissionApp() {
 
   return (
     <div data-theme={workspaceTheme} className="mission-workspace flex min-h-full lg:h-full flex-col bg-orbital text-slate-200">
-      <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} />
+      <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} onOpenReport={() => setReportOpen(true)} />
       {uplink.establishing && (
         <div
           role="status"
@@ -138,7 +141,7 @@ function MissionApp() {
           </nav>}
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <ErrorBoundary key={`${audienceMode}-${tab}`} >
-            {audienceMode === "simple" ? <SimpleSummary /> : <>
+            {audienceMode === "simple" ? <SimplePanel onOpenReport={() => setReportOpen(true)} /> : <>
             {tab === "metrics" && <ScenePanel />}
             {tab === "trajectory" && (
               <>
@@ -154,6 +157,7 @@ function MissionApp() {
       </div>
 
       <ProvenanceModal open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
+      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </div>
   );
 }

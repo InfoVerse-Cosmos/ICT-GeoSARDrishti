@@ -29,11 +29,31 @@ export const EMPTY_META = {
   data_pack_ready: false,
 };
 
+// Dual-audience view (Simple = layman default, Scientist = full console).
+// Persisted so a reload keeps the chosen audience.
+const AUDIENCE_KEY = "geosar.audienceMode";
+function readAudience() {
+  try {
+    const v = localStorage.getItem(AUDIENCE_KEY);
+    return v === "scientist" || v === "scientific" ? "scientific" : "simple";
+  } catch {
+    return "simple";
+  }
+}
+function persistAudience(mode) {
+  try {
+    localStorage.setItem(AUDIENCE_KEY, mode);
+  } catch {
+    /* ignore (private mode / SSR) */
+  }
+}
+const INITIAL_AUDIENCE = readAudience();
+
 export const useMissionStore = create((set) => ({
-  audienceMode: "simple",
   layerOpacity: 0.85,
   evidenceLoading: false,
   aois: [],
+  audienceMode: INITIAL_AUDIENCE, // simple | scientific
   activeAoiId: "aoi_assam_majuli",
   timeline: [],
   timelineMeta: EMPTY_META,
@@ -42,7 +62,9 @@ export const useMissionStore = create((set) => ({
   compareMix: 0.5, // 0 = only "before", 1 = only "after"
   activeLayer: "open_water",
   showExposure: true,
-  basemap: "satellite", // dark | satellite | street | terrain | nasa
+  // Simple mode defaults to the satellite backdrop (recognisable to anyone);
+  // Scientist mode keeps the original dark telemetry basemap.
+  basemap: INITIAL_AUDIENCE === "simple" ? "satellite" : "dark", // dark | satellite | street | terrain | nasa
   clickedPixel: null, // { lat, lon, ...telemetry }
   evidenceCard: null,
   exposure: null, // { geojson, ranked, ... }
@@ -51,10 +73,26 @@ export const useMissionStore = create((set) => ({
   connection: "CONNECTING", // LIVE_API | LOCAL_CACHE | OFFLINE | CONNECTING
   fallbackActive: false,
 
-  setAudienceMode: (audienceMode) => set({ audienceMode, basemap: audienceMode === "simple" ? "satellite" : "dark", activeLayer: "open_water", compareDate: null }),
   setLayerOpacity: (layerOpacity) => set({ layerOpacity }),
   setEvidenceLoading: (evidenceLoading) => set({ evidenceLoading }),
   setAois: (aois) => set({ aois }),
+  // Switching audience also swaps the default basemap and resets Simple mode to a
+  // plain result layer so a layman never lands on a scientist-only overlay.
+  setAudienceMode: (audienceMode) =>
+    set((s) => {
+      audienceMode = audienceMode === "scientist" ? "scientific" : audienceMode;
+      persistAudience(audienceMode);
+      const next = { audienceMode, compareDate: null };
+      if (audienceMode === "simple") {
+        if (s.basemap === "dark") next.basemap = "satellite";
+        if (!["open_water", "flooded_veg", "hydroperiod"].includes(s.activeLayer)) {
+          next.activeLayer = "open_water";
+        }
+      } else if (s.basemap === "satellite") {
+        next.basemap = "dark";
+      }
+      return next;
+    }),
   setActiveAoi: (activeAoiId) =>
     set({ activeAoiId, evidenceLoading: false, clickedPixel: null, evidenceCard: null, exposure: null, compareDate: null, playing: false }),
   setTimeline: (timeline, meta = {}) =>

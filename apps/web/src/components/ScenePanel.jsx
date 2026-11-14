@@ -37,10 +37,18 @@ export default function ScenePanel() {
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <Metric label="Open water" value={m.open_water_km2} unit="km²" colour="text-sky-300" />
-            <Metric label="Flooded vegetation" value={m.flooded_veg_km2} unit="km²" colour="text-emerald-300" />
-            <Metric label="· natural" value={m.natural_flooded_veg_km2} unit="km²" colour="text-emerald-300" />
-            <Metric label="· paddy-like" value={m.paddy_like_km2} unit="km²" colour="text-paddy" />
+            <Metric label="Open water" value={m.open_water_km2} unit="km²" colour="text-water" />
+            <Metric label="Possible flooded vegetation" value={m.flooded_veg_km2} unit="km²" colour="text-fveg" />
+            {m.natural_flooded_veg_km2 != null ? (
+              <>
+                <Metric label="· natural" value={m.natural_flooded_veg_km2} unit="km²" colour="text-fveg" />
+                <Metric label="· paddy-like" value={m.paddy_like_km2} unit="km²" colour="text-paddy" />
+              </>
+            ) : (
+              <p className="col-span-2 text-[10px] text-slate-500">
+                Natural vs paddy split needs ESA WorldCover (not loaded in this pack).
+              </p>
+            )}
             <Metric label="Dry / other" value={m.dry_km2} unit="km²" colour="text-slate-300" />
             <Metric label="Valid pixels" value={m.valid_pixel_pct} unit="%" />
             <Metric label="AOI coverage" value={m.aoi_coverage_pct} unit="%" />
@@ -74,9 +82,13 @@ export default function ScenePanel() {
           <li>
             OPERA DSWx:{" "}
             <span className="telemetry-mono text-cyan">
-              {prov?.opera_dswx_agreement_pct != null ? `${prov.opera_dswx_agreement_pct}%` : "—"}
+              {prov?.opera_dswx_agreement_pct != null ? `${prov.opera_dswx_agreement_pct}%` : "not loaded"}
             </span>{" "}
-            <span className="text-slate-400">inter-sensor agreement, not ground-truth accuracy</span>
+            <span className="text-slate-500">
+              {prov?.opera_dswx_agreement_pct != null
+                ? "inter-sensor agreement, not ground-truth accuracy"
+                : "(no OPERA DSWx tile supplied; no scene exists for the peak dates)"}
+            </span>
             {prov?.opera_dswx && (
               <span className="block telemetry-mono text-xs text-slate-400">
                 DSWx {prov.opera_dswx.dswx_date} vs NISAR {prov.opera_dswx.nisar_date} ·{" "}
@@ -87,9 +99,11 @@ export default function ScenePanel() {
           <li>
             JRC unusual open water:{" "}
             <span className="telemetry-mono text-alert">
-              {prov?.jrc ? `${prov.jrc.unusual_open_water_km2} km² (${prov.jrc.unusual_share_pct}%)` : "—"}
+              {prov?.jrc ? `${prov.jrc.unusual_open_water_km2} km² (${prov.jrc.unusual_share_pct}%)` : "not loaded"}
             </span>{" "}
-            <span className="text-slate-400">occurrence &lt; 20%, open-water class only</span>
+            <span className="text-slate-500">
+              {prov?.jrc ? "occurrence < 20%, open-water class only" : "(no JRC water-occurrence tile supplied)"}
+            </span>
           </li>
           <li>
             ΔHH double-bounce threshold:{" "}
