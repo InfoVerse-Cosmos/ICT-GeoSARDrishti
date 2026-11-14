@@ -4,6 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { api } from "@/api/client.js";
 import { LAYERS, REGIME_LEGEND, useMissionStore } from "@/store/useMissionStore.js";
 import { SIMPLE_LAYER_IDS, plainLayerLabel } from "@/plain.js";
+import { isWebglAvailable } from "@/lib/webgl.js";
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
@@ -63,6 +64,7 @@ function applyBasemap(map, id) {
 // before/after comparison, OSM inspection candidates, regional context, pixel click -> evidence.
 export default function MapWorkspace({ onPixelInspected }) {
   const [layerError, setLayerError] = useState(false);
+  const [mapDisabled, setMapDisabled] = useState(false);
   const requestRef = useRef(0);
   const inspectLocation = async (lat, lng) => {
     const requestId = ++requestRef.current;
@@ -144,17 +146,28 @@ export default function MapWorkspace({ onPixelInspected }) {
   // ---- init map once ---------------------------------------------------------------
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      // Just a dark background; the basemap effect adds tiles (Dark / Satellite / Street / Terrain / NASA).
-      style: {
-        version: 8,
-        sources: {},
-        layers: [{ id: "bg", type: "background", paint: { "background-color": "#111111" } }],
-      },
-      center: [94.1, 26.9],
-      zoom: 9,
-    });
+    let map;
+    try {
+      if (!isWebglAvailable()) throw new Error("WebGL unavailable");
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        // Just a dark background; the basemap effect adds tiles (Dark / Satellite / Street / Terrain / NASA).
+        style: {
+          version: 8,
+          sources: {},
+          layers: [{ id: "bg", type: "background", paint: { "background-color": "#111111" } }],
+        },
+        center: [94.1, 26.9],
+        zoom: 9,
+      });
+    } catch (err) {
+      // No WebGL context (e.g. hardware acceleration off, remote/virtual desktop).
+      // Degrade gracefully instead of crashing the whole dashboard: the data panels,
+      // timeline, and lat/lon inspection all keep working without the map.
+      console.warn("GeoSAR Drishti: interactive map disabled —", err?.message || err);
+      setMapDisabled(true);
+      return;
+    }
     map.on("load", () => {
       readyRef.current = true;
       const pending = [...queueRef.current.values()];
@@ -364,6 +377,23 @@ export default function MapWorkspace({ onPixelInspected }) {
       <div className="relative min-h-[360px] flex-1 lg:min-h-0">
       <div ref={containerRef} className="absolute inset-0" data-testid="map" />
 
+      {mapDisabled && (
+        <div role="alert" className="absolute inset-0 z-20 flex items-center justify-center bg-orbital/95 p-6 text-center">
+          <div className="max-w-md rounded border border-grid bg-panel p-5 text-sm">
+            <h3 className="telemetry-mono text-base text-cyan">Interactive map unavailable</h3>
+            <p className="mt-2 text-slate-300">
+              Your browser could not start WebGL, so the map can&apos;t be drawn. Everything else works —
+              the timeline, scene metrics, evidence, and point inspection.
+            </p>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-left text-xs text-slate-400">
+              <li>Turn on <strong>&ldquo;Use hardware acceleration&rdquo;</strong> in your browser settings, then reload.</li>
+              <li>Or open this dashboard in Chrome, Edge, or Firefox with GPU access.</li>
+              <li>You can still inspect any location with the <strong>Latitude / Longitude</strong> form above.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Layer toggles */}
       <div className="absolute left-3 top-3 max-h-[60%] w-48 overflow-y-auto space-y-1 rounded border border-grid bg-panel/90 p-2 text-xs telemetry-mono">
         {available.map((l) => (
@@ -424,6 +454,9 @@ export default function MapWorkspace({ onPixelInspected }) {
         </>}
       </div>
 
+      {/* Simple-mode legend floats over the map's own top-right (must stay INSIDE this
+          relative container, else it anchors to the workspace and overlaps the top bar). */}
+      {simple && <Legend layer={renderedLayer} simple />}
       </div>
       {/* Basemap switcher stays outside the map controls and attribution. */}
       {!simple && <div className="flex flex-wrap gap-1 border-t border-grid bg-panel p-2 text-xs telemetry-mono">
@@ -441,7 +474,7 @@ export default function MapWorkspace({ onPixelInspected }) {
           </button>
         ))}
       </div>}
-      <Legend layer={renderedLayer} simple={simple} />
+      {!simple && <Legend layer={renderedLayer} simple={false} />}
     </div>
   );
 }
