@@ -1,7 +1,10 @@
-"""In-memory loader for committed AOI data packs (SRS §6.1).
+"""Loader for AOI data packs built from the user's own NISAR granules (SRS §6.1).
 
-Manifests are loaded once at startup for <20ms responses. Missing packs
-degrade to a static default dictionary rather than raising.
+Only AOIs that were actually analysed on this machine (a manifest.json AND a
+time_series_cube.npz in the data store) are listed. Nothing is shipped, mocked or
+injected as a default: an empty store simply means "drop NISAR .h5 files in DATA/
+and run analyze". The directory is re-scanned when packs change, so a freshly built
+AOI appears without restarting the API.
 """
 from __future__ import annotations
 
@@ -11,64 +14,63 @@ from typing import Any
 
 from .config import DATA_STORE
 
-# Static default used when a manifest file is missing entirely (SRS §7.1 fallbacks).
-_DEFAULT_AOIS: dict[str, dict[str, Any]] = {
-    "aoi_assam_majuli": {
-        "aoi_id": "aoi_assam_majuli",
-        "name": "Majuli-Kaziranga Floodplain, Brahmaputra Valley, Assam",
-        "role": "Primary CH-06 Monsoon Time-Series Showcase",
-        "bounds": [93.90, 26.75, 94.30, 27.05],
-        "default_zoom": 9,
-        "layers": ["open_water", "flooded_veg", "hydroperiod", "gmm_regimes", "jrc_anomaly"],
-        "fallback_plan": "A",
-        "timeline": [],
-    },
-    "aoi_nagpur_kanhan": {
-        "aoi_id": "aoi_nagpur_kanhan",
-        "name": "Kanhan-Pench / Wainganga Corridor, Nagpur District, Maharashtra",
-        "role": "Local Watershed & Multi-Source Context Showcase",
-        "bounds": [78.95, 21.15, 79.35, 21.45],
-        "default_zoom": 9,
-        "layers": ["open_water", "hydroperiod", "context_layers"],
-        "fallback_plan": "A",
-        "timeline": [],
-    },
-}
+
+def _pack_ready(aoi_dir: Path) -> bool:
+    return (aoi_dir / "manifest.json").is_file() and (aoi_dir / "time_series_cube.npz").is_file()
 
 
 class DataStore:
     def __init__(self) -> None:
         self._manifests: dict[str, dict[str, Any]] = {}
-        self._loaded = False
+        self._signature: tuple | None = None
+
+    # -- discovery ---------------------------------------------------------------
+    def _scan_signature(self) -> tuple:
+        """Cheap fingerprint (pack names + manifest/cube mtimes) used to detect new or rebuilt packs."""
+        if not DATA_STORE.is_dir():
+            return ()
+        sig = []
+        for d in sorted(p for p in DATA_STORE.iterdir() if p.is_dir() and not p.name.startswith((".", "_"))):
+            try:
+                if _pack_ready(d):
+                    sig.append((d.name, (d / "manifest.json").stat().st_mtime_ns,
+                                (d / "time_series_cube.npz").stat().st_mtime_ns))
+            except OSError:
+                continue
+        return tuple(sig)
 
     def load(self) -> None:
         self._manifests = {}
-        if DATA_STORE.exists():
-            for aoi_dir in sorted(p for p in DATA_STORE.iterdir() if p.is_dir()):
-                manifest = aoi_dir / "manifest.json"
-                if manifest.exists():
-                    try:
-                        self._manifests[aoi_dir.name] = json.loads(manifest.read_text())
-                    except json.JSONDecodeError:
-                        # Corrupt pack -> fall back to default entry if we have one.
-                        if aoi_dir.name in _DEFAULT_AOIS:
-                            self._manifests[aoi_dir.name] = _DEFAULT_AOIS[aoi_dir.name]
-        # Ensure the two shipped AOIs always exist, even with no packs on disk.
-        for aoi_id, default in _DEFAULT_AOIS.items():
-            self._manifests.setdefault(aoi_id, default)
-        self._loaded = True
+        if DATA_STORE.is_dir():
+            for aoi_dir in sorted(p for p in DATA_STORE.iterdir() if p.is_dir() and not p.name.startswith((".", "_"))):
+                if not _pack_ready(aoi_dir):
+                    continue
+                try:
+                    self._manifests[aoi_dir.name] = json.loads((aoi_dir / "manifest.json").read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, OSError):
+                    continue  # corrupt pack -> not listed (never replaced by made-up data)
+        self._signature = self._scan_signature()
+
+    def refresh(self) -> None:
+        """Re-scan only if packs were added/removed/rebuilt since the last load."""
+        if self._signature is None or self._scan_signature() != self._signature:
+            self.load()
 
     @property
     def using_fallback(self) -> bool:
-        """True when no real manifest.json files were found on disk."""
-        return not DATA_STORE.exists() or not any(
-            (DATA_STORE / aoi / "manifest.json").exists() for aoi in self._manifests
-        )
+        """True when no analysed AOI exists yet (nothing to show)."""
+        return not self._manifests
+
+    @property
+    def data_dir(self) -> Path:
+        return DATA_STORE
 
     def list_aois(self) -> list[dict[str, Any]]:
+        self.refresh()
         return list(self._manifests.values())
 
     def get(self, aoi_id: str) -> dict[str, Any] | None:
+        self.refresh()
         return self._manifests.get(aoi_id)
 
     def aoi_dir(self, aoi_id: str) -> Path:

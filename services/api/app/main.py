@@ -40,7 +40,9 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     store.load()
-    logger.info("Loaded %d AOI pack(s). fallback=%s", len(store.list_aois()), store.using_fallback)
+    logger.info("Loaded %d analysed AOI pack(s) from %s", len(store.list_aois()), store.data_dir)
+    if store.using_fallback:
+        logger.warning("No analysed data in %s - put NISAR .h5 files in DATA/ and run analyze.", store.data_dir)
 
 
 @app.exception_handler(Exception)
@@ -68,6 +70,7 @@ def health() -> dict:
             "earthdata_token_configured": settings.earthdata_enabled,
             "llm_narrator_enabled": settings.llm_enabled,
             "data_store_fallback": store.using_fallback,
+            "data_dir": str(store.data_dir),
             "data_packs": {a["aoi_id"]: store.pack_status(a["aoi_id"]) for a in store.list_aois()},
         },
         source_mode="LIVE_API",

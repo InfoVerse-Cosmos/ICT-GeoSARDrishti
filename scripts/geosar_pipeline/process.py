@@ -218,6 +218,14 @@ def run(aoi_id: str, h5_dir: str | Path, store: Path, *, track_frame: str | None
                        "pipeline": "scripts/02_subset_and_classify_sar.py"},
     })
     lims = prov.setdefault("limitations", [])
+    # Honest-framing statements are part of EVERY pack (SRS section 10), not only hand-curated ones.
+    for msg in ("Radar-derived surface/canopy-water indication for inspection, not confirmed flood depth.",
+                "Hydroperiod expressed as M of N valid NISAR observations, not days flooded."):
+        if msg not in lims:
+            lims.append(msg)
+    if manifest.get("acquisition_gaps") and not any("gap" in l.lower() for l in lims):
+        lims.append("Acquisition gap(s) " + ", ".join(manifest["acquisition_gaps"]) +
+                    " are real (no suitable same-track pass) and shown explicitly, never interpolated.")
     if synthetic:
         msg = "SYNTHETIC TEST DATA — generated for pipeline testing, not a NISAR observation."
         if msg not in lims:

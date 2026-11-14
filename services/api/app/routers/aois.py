@@ -24,11 +24,21 @@ def list_aois() -> dict:
         }
         for a in store.list_aois()
     ]
-    return envelope(
-        {"aois": aois},
-        fallback_active=store.using_fallback,
-        warning="Serving default AOI directory (no data packs found)." if store.using_fallback else None,
-    )
+    if not aois:
+        return envelope(
+            {"aois": [], "onboarding": {
+                "message": "No analysed NISAR data found yet.",
+                "steps": [
+                    "Copy your NISAR L2 GCOV .h5 granules into the DATA/ folder.",
+                    "Run analyze.bat (Windows) or ./analyze.sh (macOS/Linux).",
+                    "Refresh this page - your area appears here automatically.",
+                ],
+            }},
+            status="no_data",
+            fallback_active=True,
+            warning="No analysed data packs found. Add NISAR granules to DATA/ and run analyze.",
+        )
+    return envelope({"aois": aois}, fallback_active=False)
 
 
 @router.get("/aois/{aoi_id}/timeline")

@@ -46,11 +46,12 @@ class EvidenceCardRequest(BaseModel):
     lat: float | None = None
     lon: float | None = None
     telemetry: dict = {}
+    narrate: bool = True  # False -> instant deterministic card only (UI then asks again for the LLM wording)
 
 
 @router.post("/evidence-card")
 async def evidence_card(req: EvidenceCardRequest) -> dict:
-    card, source_mode, fallback, warning = await build_evidence_card(req.telemetry)
+    card, source_mode, fallback, warning = await build_evidence_card(req.telemetry, narrate=req.narrate)
     return envelope(
         {"card": card},
         aoi_id=req.aoi_id,

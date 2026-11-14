@@ -297,7 +297,7 @@ def test_inspect_output_feeds_evidence_card_with_radar_evidence(client, syntheti
 # ================================================================ evidence card: LLM path (§7.2 rule 2)
 def _llm_settings():
     return Settings(llm_api_key="test-key", llm_api_base="http://llm.invalid/v1",
-                    llm_model="test-model", _env_file=None)
+                    llm_model="test-model", llm_fallback_models="", _env_file=None)
 
 
 def test_llm_narrator_success(monkeypatch):
@@ -313,10 +313,12 @@ def test_llm_narrator_success(monkeypatch):
     assert card["caveat"] == CAVEAT                      # grounded fields untouched
     assert calls[1]["url"] == "http://llm.invalid/v1/chat/completions"
     assert calls[1]["headers"]["Authorization"] == "Bearer test-key"
-    assert "Use ONLY these numbers" in calls[1]["json"]["messages"][0]["content"]
+    msgs = calls[1]["json"]["messages"]
+    assert msgs[0]["role"] == "system" and "Use ONLY facts and numbers" in msgs[0]["content"]
+    assert "radar_physics_evidence" in msgs[1]["content"]       # user turn = the grounded card JSON
 
 
-def test_llm_narrator_timeout_is_at_most_3s(monkeypatch):
+def test_llm_narrator_timeout_is_bounded_and_non_blocking_setting(monkeypatch):
     calls: list = []
     resp = FakeResponse({"choices": [{"message": {"content": "x"}}]})
     monkeypatch.setattr(evidence_narrator, "get_settings", _llm_settings)
@@ -324,7 +326,7 @@ def test_llm_narrator_timeout_is_at_most_3s(monkeypatch):
                         make_fake_async_client(response=resp, calls=calls))
     asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
     timeout: httpx.Timeout = calls[0]["init"]["timeout"]
-    assert timeout.read <= 3.0
+    assert timeout.read == _llm_settings().llm_timeout_seconds <= 20.0
 
 
 @pytest.mark.parametrize("exc", [
@@ -345,3 +347,99 @@ def test_llm_narrator_http_error_falls_back(monkeypatch):
                         make_fake_async_client(response=FakeResponse(status_code=503)))
     card, mode, fallback, _ = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
     assert card["mode"] == "deterministic" and fallback is True
+
+
+def test_narrate_false_returns_instant_deterministic_card_without_calling_llm(monkeypatch):
+    calls: list = []
+    monkeypatch.setattr(evidence_narrator, "get_settings", _llm_settings)
+    monkeypatch.setattr(evidence_narrator.httpx, "AsyncClient", make_fake_async_client(
+        response=FakeResponse({"choices": [{"message": {"content": "x"}}]}), calls=calls))
+    card, mode, fallback, warning = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE, narrate=False))
+    assert card["mode"] == "deterministic" and fallback is False and not calls
+
+
+def test_llm_narrator_retries_once_on_503_then_succeeds(monkeypatch):
+    seq = [FakeResponse(status_code=503), FakeResponse({"choices": [{"message": {"content": "Retried OK."}}]})]
+    calls: list = []
+
+    class Client:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, **kw):
+            calls.append(url)
+            return seq.pop(0)
+
+    monkeypatch.setattr(evidence_narrator, "get_settings", _llm_settings)
+    monkeypatch.setattr(evidence_narrator.httpx, "AsyncClient", Client)
+    card, mode, fallback, _ = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    assert card["narration"] == "Retried OK." and len(calls) == 2
+
+
+def test_llm_narration_with_invented_numbers_is_rejected(monkeypatch):
+    resp = FakeResponse({"choices": [{"message": {"content": "Water was 4.7 metres deep here."}}]})
+    monkeypatch.setattr(evidence_narrator, "get_settings", _llm_settings)
+    monkeypatch.setattr(evidence_narrator.httpx, "AsyncClient", make_fake_async_client(response=resp))
+    card, mode, fallback, warning = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    assert card == deterministic_card(SRS_EXAMPLE) and fallback is True and "unavailable" in warning
+
+
+def test_same_card_is_narrated_once_then_served_from_cache(monkeypatch):
+    calls: list = []
+    resp = FakeResponse({"choices": [{"message": {"content": "Cached narration."}}]})
+    monkeypatch.setattr(evidence_narrator, "get_settings", _llm_settings)
+    monkeypatch.setattr(evidence_narrator.httpx, "AsyncClient", make_fake_async_client(response=resp, calls=calls))
+    a = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    b = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    assert a[0]["narration"] == b[0]["narration"] == "Cached narration."
+    assert len([c for c in calls if "url" in c]) == 1            # second click spent no quota
+
+
+def test_quota_429_pauses_the_llm_instead_of_slowing_every_click(monkeypatch):
+    calls: list = []
+    monkeypatch.setattr(evidence_narrator, "get_settings", _llm_settings)
+    monkeypatch.setattr(evidence_narrator.httpx, "AsyncClient",
+                        make_fake_async_client(response=FakeResponse(status_code=429), calls=calls))
+    first = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    n_after_first = len([c for c in calls if "url" in c])
+    second = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    assert first[3].startswith("LLM narrator unavailable") and second[3].startswith("LLM narrator paused")
+    assert n_after_first == 1 and len([c for c in calls if "url" in c]) == 1   # no retry, no 2nd call
+    assert second[0] == deterministic_card(SRS_EXAMPLE)
+
+def test_fallback_model_narrates_when_primary_is_out_of_quota(monkeypatch):
+    seq = {"primary-m": FakeResponse(status_code=429),
+           "backup-m": FakeResponse({"choices": [{"message": {"content": "Backup model narration."}}]})}
+    used: list = []
+
+    class Client:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, **kw):
+            used.append(kw["json"]["model"])
+            return seq[kw["json"]["model"]]
+
+    monkeypatch.setattr(evidence_narrator, "get_settings", lambda: Settings(
+        llm_api_key="k", llm_api_base="http://llm.invalid/v1", llm_model="primary-m",
+        llm_fallback_models="backup-m", _env_file=None))
+    monkeypatch.setattr(evidence_narrator.httpx, "AsyncClient", Client)
+    card, mode, fallback, warning = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    assert used == ["primary-m", "backup-m"]
+    assert card["narration"] == "Backup model narration." and card["narration_model"] == "backup-m"
+    assert fallback is False and "fallback backup-m" in warning
+    # primary is now paused: the next (different) card goes straight to the backup model
+    used.clear()
+    other = dict(SRS_EXAMPLE, lat=1.0)
+    asyncio.run(evidence_narrator.build_evidence_card(other))
+    assert used == ["backup-m"]
+
+
+def test_all_models_failing_ends_on_the_built_in_template(monkeypatch):
+    monkeypatch.setattr(evidence_narrator, "get_settings", lambda: Settings(
+        llm_api_key="k", llm_api_base="http://llm.invalid/v1", llm_model="a",
+        llm_fallback_models="b", _env_file=None))
+    monkeypatch.setattr(evidence_narrator.httpx, "AsyncClient",
+                        make_fake_async_client(response=FakeResponse(status_code=429)))
+    card, mode, fallback, warning = asyncio.run(evidence_narrator.build_evidence_card(SRS_EXAMPLE))
+    assert card == deterministic_card(SRS_EXAMPLE) and fallback is True and "narrator unavailable" in warning

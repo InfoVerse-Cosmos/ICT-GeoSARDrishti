@@ -173,6 +173,9 @@ def run(aoi_id: str, store: Path, *, k: int = 5, jrc: str | None = None, dswx: s
         inter = (nisar_open & dswx_open & both).sum()
         union = ((nisar_open | dswx_open) & both).sum()
         prov["opera_dswx_agreement_pct"] = None if agree is None else round(agree, 1)
+        lims = prov.setdefault("limitations", [])
+        if not any("inter-sensor" in l for l in lims):
+            lims.append("OPERA agreement is inter-sensor agreement, not ground-truth accuracy.")
         prov["opera_dswx"] = {
             "file": Path(dswx).name, "dswx_date": target, "nisar_date": dates[t],
             "compared_pixels": int(both.sum()),

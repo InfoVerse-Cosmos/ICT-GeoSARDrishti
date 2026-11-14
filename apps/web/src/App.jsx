@@ -27,12 +27,34 @@ function metaFrom(src) {
   return Object.fromEntries(keys.filter((k) => k in src).map((k) => [k, src[k]]));
 }
 
+// Shown when the backend has no analysed NISAR data yet: tells a first-time user exactly what to do.
+function NoDataState() {
+  return (
+    <div className="flex flex-1 items-center justify-center p-6" role="status">
+      <div className="max-w-xl rounded border border-grid bg-panel p-6">
+        <h2 className="telemetry-mono text-base text-cyan">No NISAR data analysed yet</h2>
+        <p className="mt-2 text-sm text-slate-300">
+          This app only shows areas you have real satellite data for. Nothing is pre-loaded or simulated.
+        </p>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-300">
+          <li>Copy your NISAR L2 GCOV <code className="text-cyan">.h5</code> files into the <code className="text-cyan">DATA/</code> folder.</li>
+          <li>Run <code className="text-cyan">analyze.bat</code> (Windows) or <code className="text-cyan">./analyze.sh</code> (macOS / Linux).</li>
+          <li>Refresh this page. Your area appears in the selector at the top.</li>
+        </ol>
+        <p className="mt-4 text-xs text-slate-500">
+          Short on disk space? Set <code>GEOSAR_DATA_DIR</code> / <code>GEOSAR_DATA_STORE</code> in <code>services/api/.env</code> to a bigger drive.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function MissionApp() {
   const [workspaceTheme] = useState(() => {
     try { return localStorage.getItem("geosar-landing-theme") === "dark" ? "dark" : "light"; }
     catch { return "light"; }
   });
-  const { audienceMode, activeAoiId, connection, setAois, setTimeline, setConnection, setFallbackActive } = useMissionStore();
+  const { aois, audienceMode, activeAoiId, connection, setAois, setTimeline, setConnection, setFallbackActive } = useMissionStore();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
   const [provenanceOpen, setProvenanceOpen] = useState(false);
@@ -78,6 +100,7 @@ function MissionApp() {
 
   // Load timeline whenever the AOI (or connection mode) changes.
   useEffect(() => {
+    if (!activeAoiId) return;
     (async () => {
       if (connection === "OFFLINE" && offlineMirror.current) {
         const a = (offlineMirror.current.aois || []).find((x) => x.aoi_id === activeAoiId);
@@ -108,6 +131,10 @@ function MissionApp() {
         </div>
       )}
 
+      {aois.length === 0 && !uplink.establishing ? (
+        <NoDataState />
+      ) : (
+      <>
       {audienceMode === "simple" && <SimpleSummary compact />}
       <button className="border-b border-grid px-4 py-2 text-left text-sm lg:hidden" aria-expanded={drawerOpen} aria-controls="mission-drawer" onClick={() => setDrawerOpen(!drawerOpen)}>{drawerOpen ? "Close details" : "Open details"}</button>
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -155,6 +182,8 @@ function MissionApp() {
           </div>
         </aside>
       </div>
+      </>
+      )}
 
       <ProvenanceModal open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
