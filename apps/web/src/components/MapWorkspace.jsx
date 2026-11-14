@@ -2,21 +2,53 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { api } from "@/api/client.js";
-import { useMissionStore, LAYERS } from "@/store/useMissionStore.js";
+import { LAYERS, REGIME_LEGEND, useMissionStore } from "@/store/useMissionStore.js";
 
-// Center MapLibre GL JS viewport (SRS §4.2.2): raster overlays + pixel click.
-export default function MapWorkspace() {
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+const OVERLAY_OPACITY = 0.85;
+
+// Center MapLibre GL JS viewport (SRS §4.2.2): RGBA overlays per date, before/after
+// comparison, OSM inspection candidates, regional context, pixel click -> evidence.
+export default function MapWorkspace({ onPixelInspected }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
-  const { aois, activeAoiId, activeLayer, activeDate, setActiveLayer, setClickedPixel, setEvidenceCard } =
-    useMissionStore();
+  const inspectedCb = useRef(onPixelInspected);
+  inspectedCb.current = onPixelInspected;
+
+  const {
+    aois, activeAoiId, activeLayer, activeDate, compareDate, compareMix, timeline, showExposure,
+    exposure, clickedPixel, flyTo, connection,
+    setActiveLayer, setClickedPixel, setEvidenceCard, setExposure, setCompareDate, setCompareMix, setShowExposure,
+  } = useMissionStore();
 
   const aoi = aois.find((a) => a.aoi_id === activeAoiId);
+  const available = LAYERS.filter((l) => !aoi?.layers || aoi.layers.includes(l.id));
+  const layerDef = LAYERS.find((l) => l.id === activeLayer) || LAYERS[0];
+  const isRaster = layerDef.id !== "context_layers";
 
-  // Init map once.
+  // ---- helpers ------------------------------------------------------------------
+  // NB: map.isStyleLoaded() is false while tiles stream in, and "load" fires only once,
+  // so we keep our own ready flag + queue instead of map.once("load").
+  // Keyed: a later call with the same key replaces the queued one (avoids aborted image loads).
+  const readyRef = useRef(false);
+  const queueRef = useRef(new Map());
+  const lastImageRef = useRef({});
+  const whenReady = (fn, key = Symbol("once")) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (readyRef.current) fn(map);
+    else queueRef.current.set(key, fn);
+  };
+
+  const upsertGeojson = (map, id, data) => {
+    if (map.getSource(id)) map.getSource(id).setData(data);
+    else map.addSource(id, { type: "geojson", data });
+  };
+
+  // ---- init map once ---------------------------------------------------------------
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
-    mapRef.current = new maplibregl.Map({
+    const map = new maplibregl.Map({
       container: containerRef.current,
       style: {
         version: 8,
@@ -28,83 +60,183 @@ export default function MapWorkspace() {
             attribution: "© OpenStreetMap contributors",
           },
         },
-        layers: [{ id: "osm", type: "raster", source: "osm" }],
+        layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -0.6 } }],
       },
       center: [94.1, 26.9],
       zoom: 9,
     });
+    map.on("load", () => {
+      readyRef.current = true;
+      const pending = [...queueRef.current.values()];
+      queueRef.current = new Map();
+      pending.forEach((fn) => fn(map));
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
-    mapRef.current.on("click", async (e) => {
+    map.on("click", async (e) => {
       const { lat, lng } = e.lngLat;
-      const res = await api.inspect(useMissionStore.getState().activeAoiId, lat.toFixed(4), lng.toFixed(4));
-      setClickedPixel({ lat, lon: lng, ...(res.data || {}), status: res.status, warning: res.warning });
+      const aoiId = useMissionStore.getState().activeAoiId;
+      setClickedPixel({ lat, lon: lng, status: "loading" });
+      setEvidenceCard(null);
+      inspectedCb.current?.();
+      const res = await api.inspect(aoiId, lat.toFixed(5), lng.toFixed(5));
+      setClickedPixel({ ...(res.data || {}), lat, lon: lng, status: res.status, warning: res.warning });
       if (res.status === "ok") {
         const card = await api.evidenceCard({ aoi_id: res.aoi_id, lat, lon: lng, telemetry: res.data });
         setEvidenceCard(card.data?.card || null);
-      } else {
-        setEvidenceCard(null);
       }
     });
+    mapRef.current = map;
     return () => {
-      mapRef.current?.remove();
+      map.remove();
       mapRef.current = null;
+      readyRef.current = false;
+      queueRef.current = new Map();
+      lastImageRef.current = {};
     };
   }, [setClickedPixel, setEvidenceCard]);
 
-  // Fit to AOI bounds + draw boundary box.
+  // ---- AOI boundary + fit ------------------------------------------------------------
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !aoi?.bounds) return;
+    if (!aoi?.bounds) return;
     const [w, s, e, n] = aoi.bounds;
-    map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 600 });
-
-    const draw = () => {
-      const boundary = {
+    whenReady((map) => {
+      map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 600 });
+      upsertGeojson(map, "aoi-boundary", {
         type: "Feature",
         geometry: { type: "Polygon", coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] },
-      };
-      if (map.getSource("aoi-boundary")) {
-        map.getSource("aoi-boundary").setData(boundary);
-      } else {
-        map.addSource("aoi-boundary", { type: "geojson", data: boundary });
+      });
+      if (!map.getLayer("aoi-boundary-line")) {
         map.addLayer({
-          id: "aoi-boundary-line",
-          type: "line",
-          source: "aoi-boundary",
+          id: "aoi-boundary-line", type: "line", source: "aoi-boundary",
           paint: { "line-color": "#38BDF8", "line-width": 2, "line-dasharray": [2, 1] },
         });
       }
-    };
-    if (map.isStyleLoaded()) draw();
-    else map.once("load", draw);
-  }, [aoi]);
+    }, "aoi");
+    if (!available.find((l) => l.id === activeLayer)) setActiveLayer(available[0]?.id || "open_water");
+  }, [aoi]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Swap the active RGBA overlay image source.
+  // ---- raster overlays (active + optional "before" comparison) ------------------------
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !aoi?.bounds) return;
+    if (!aoi?.bounds) return;
     const [w, s, e, n] = aoi.bounds;
-    const url = api.layerPngUrl(activeAoiId, activeLayer, activeDate);
     const coords = [[w, n], [e, n], [e, s], [w, s]];
+    const dated = layerDef.dated;
+    const afterUrl = api.layerPngUrl(activeAoiId, activeLayer, dated ? activeDate : null);
+    const beforeUrl = compareDate ? api.layerPngUrl(activeAoiId, activeLayer, dated ? compareDate : null) : null;
 
-    const apply = () => {
-      if (map.getSource("active-overlay")) {
-        map.getSource("active-overlay").updateImage({ url, coordinates: coords });
-      } else {
-        map.addSource("active-overlay", { type: "image", url, coordinates: coords });
-        map.addLayer({ id: "active-overlay-layer", type: "raster", source: "active-overlay", paint: { "raster-opacity": 0.75 } });
-      }
+    whenReady((map) => {
+      const setImage = (id, url, opacity, beforeId) => {
+        if (!url || !isRaster || connection === "OFFLINE") {
+          if (map.getLayer(`${id}-layer`)) map.removeLayer(`${id}-layer`);
+          if (map.getSource(id)) map.removeSource(id);
+          delete lastImageRef.current[id];
+          return;
+        }
+        const sig = `${url}|${coords.flat().join(",")}`;
+        if (map.getSource(id)) {
+          if (lastImageRef.current[id] !== sig) map.getSource(id).updateImage({ url, coordinates: coords });
+        } else {
+          map.addSource(id, { type: "image", url, coordinates: coords });
+          map.addLayer(
+            { id: `${id}-layer`, type: "raster", source: id, paint: { "raster-fade-duration": 0 } },
+            map.getLayer(beforeId) ? beforeId : undefined,
+          );
+        }
+        lastImageRef.current[id] = sig;
+        map.setPaintProperty(`${id}-layer`, "raster-opacity", opacity);
+      };
+      const comparing = Boolean(compareDate) && dated;
+      setImage("compare-overlay", comparing ? beforeUrl : null, (1 - compareMix) * OVERLAY_OPACITY, "aoi-boundary-line");
+      setImage("active-overlay", afterUrl, comparing ? compareMix * OVERLAY_OPACITY : OVERLAY_OPACITY, "aoi-boundary-line");
+    }, "overlays");
+  }, [activeAoiId, activeLayer, activeDate, compareDate, compareMix, aoi, connection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- OSM inspection candidates (shared with the Inspection Log tab) -----------------
+  useEffect(() => {
+    if (connection === "OFFLINE" || connection === "CONNECTING") return;
+    let cancelled = false;
+    (async () => {
+      const res = await api.exposure(activeAoiId);
+      if (!cancelled) setExposure(res.data ? { ...res.data, warning: res.warning } : null);
+    })();
+    return () => {
+      cancelled = true;
     };
-    if (map.isStyleLoaded()) apply();
-    else map.once("load", apply);
-  }, [activeAoiId, activeLayer, activeDate, aoi]);
+  }, [activeAoiId, connection, setExposure]);
+
+  useEffect(() => {
+    whenReady((map) => {
+      upsertGeojson(map, "exposure", showExposure && exposure?.geojson ? exposure.geojson : EMPTY_FC);
+      if (!map.getLayer("exposure-lines")) {
+        map.addLayer({
+          id: "exposure-lines", type: "line", source: "exposure",
+          filter: ["==", ["geometry-type"], "LineString"],
+          paint: { "line-color": "#EF4444", "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.5, 14, 4] },
+        });
+        map.addLayer({
+          id: "exposure-points", type: "circle", source: "exposure",
+          filter: ["!=", ["geometry-type"], "LineString"],
+          paint: { "circle-color": "#EF4444", "circle-radius": 5, "circle-stroke-color": "#fff", "circle-stroke-width": 1 },
+        });
+      }
+    });
+  }, [exposure, showExposure]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- regional context layer (vector) -----------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let data = EMPTY_FC;
+      if (activeLayer === "context_layers" && connection !== "OFFLINE") {
+        const res = await api.context(activeAoiId);
+        data = res.data?.geojson || EMPTY_FC;
+      }
+      if (cancelled) return;
+      whenReady((map) => {
+        upsertGeojson(map, "context", data);
+        if (!map.getLayer("context-fill")) {
+          map.addLayer({ id: "context-fill", type: "fill", source: "context", paint: { "fill-color": "#A78BFA", "fill-opacity": 0.15 } });
+          map.addLayer({ id: "context-line", type: "line", source: "context", paint: { "line-color": "#A78BFA", "line-width": 1.5 } });
+        }
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAoiId, activeLayer, connection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- clicked pixel marker -------------------------------------------------------------
+  useEffect(() => {
+    whenReady((map) => {
+      const data = clickedPixel
+        ? { type: "Feature", geometry: { type: "Point", coordinates: [clickedPixel.lon, clickedPixel.lat] } }
+        : EMPTY_FC;
+      upsertGeojson(map, "clicked", data);
+      if (!map.getLayer("clicked-point")) {
+        map.addLayer({
+          id: "clicked-point", type: "circle", source: "clicked",
+          paint: { "circle-radius": 7, "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": "#F47216", "circle-stroke-width": 3 },
+        });
+      }
+    });
+  }, [clickedPixel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- fly to (from Inspection Log) -------------------------------------------------------
+  useEffect(() => {
+    if (flyTo?.center) mapRef.current?.flyTo({ center: flyTo.center, zoom: flyTo.zoom, duration: 1200 });
+  }, [flyTo]);
+
+  const otherDates = timeline.filter((t) => t.date !== activeDate);
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" />
+      <div ref={containerRef} className="h-full w-full" data-testid="map" />
+
       {/* Layer toggles */}
-      <div className="absolute left-3 top-3 space-y-1 rounded border border-grid bg-panel/90 p-2 text-xs telemetry-mono">
-        {LAYERS.map((l) => (
+      <div className="absolute left-3 top-3 w-56 space-y-1 rounded border border-grid bg-panel/90 p-2 text-xs telemetry-mono">
+        {available.map((l) => (
           <button
             key={l.id}
             onClick={() => setActiveLayer(l.id)}
@@ -114,9 +246,87 @@ export default function MapWorkspace() {
           >
             <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: l.color }} />
             {l.label}
+            {!l.dated && <span className="ml-auto text-[9px] text-slate-500">SEASON</span>}
           </button>
         ))}
+        <label className="flex items-center gap-2 border-t border-grid px-2 pt-2 text-slate-300">
+          <input type="checkbox" checked={showExposure} onChange={(e) => setShowExposure(e.target.checked)} />
+          <span className="h-3 w-3 rounded-sm bg-alert" /> Inspection candidates
+        </label>
+
+        {/* Before / after comparison */}
+        {layerDef.dated && (
+          <div className="space-y-1 border-t border-grid px-2 pt-2 text-slate-300">
+            <div className="text-[10px] uppercase text-slate-500">Before / after</div>
+            <select
+              aria-label="Compare with date"
+              value={compareDate || ""}
+              onChange={(e) => setCompareDate(e.target.value || null)}
+              className="w-full rounded border border-grid bg-orbital px-1 py-0.5"
+            >
+              <option value="">off</option>
+              {otherDates.map((t) => (
+                <option key={t.date} value={t.date}>before: {t.date}</option>
+              ))}
+            </select>
+            {compareDate && (
+              <>
+                <input
+                  aria-label="Before/after mix"
+                  type="range" min="0" max="1" step="0.05" value={compareMix}
+                  onChange={(e) => setCompareMix(Number(e.target.value))}
+                  className="w-full accent-isro"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span>{compareDate}</span>
+                  <span>{activeDate}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      <Legend layer={activeLayer} />
+    </div>
+  );
+}
+
+function Legend({ layer }) {
+  let body = null;
+  if (layer === "hydroperiod") {
+    body = (
+      <>
+        <div className="h-2 w-40 rounded" style={{ background: "linear-gradient(90deg,#FDE68A,#C2410C)" }} />
+        <div className="flex justify-between text-[10px] text-slate-400"><span>wet 1 obs</span><span>wet every obs (M=N)</span></div>
+      </>
+    );
+  } else if (layer === "gmm_regimes") {
+    body = REGIME_LEGEND.map(([name, c]) => (
+      <div key={name} className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm" style={{ background: c }} />{name}</div>
+    ));
+  } else if (layer === "flooded_veg") {
+    body = (
+      <>
+        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-fveg" />Natural flooded vegetation</div>
+        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-paddy" />Paddy-like agricultural inundation</div>
+      </>
+    );
+  } else if (layer === "jrc_anomaly") {
+    body = (
+      <>
+        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-alert" />Unusual open water (JRC &lt; 20%)</div>
+        <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-water" />Historically normal open water</div>
+      </>
+    );
+  } else if (layer === "context_layers") {
+    body = <div>Official GSDA / CGWB context — not a SAR detection</div>;
+  } else {
+    body = <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-sm bg-water" />Open water (HH &amp; HV below Otsu τ)</div>;
+  }
+  return (
+    <div className="absolute right-3 top-3 max-w-xs space-y-1 rounded border border-grid bg-panel/90 p-2 text-[11px] telemetry-mono text-slate-300">
+      {body}
     </div>
   );
 }

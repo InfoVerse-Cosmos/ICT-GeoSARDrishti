@@ -54,7 +54,12 @@ export const api = {
   health: () => request("/health"),
   listAois: () => request("/aois"),
   timeline: (aoiId) => request(`/aois/${aoiId}/timeline`),
-  earthdataLive: (bbox) => request(`/nisar/earthdata-live?bbox=${encodeURIComponent(bbox)}`),
+  earthdataLive: (bbox, aoiId) =>
+    request(
+      `/nisar/earthdata-live?bbox=${encodeURIComponent(bbox)}${aoiId ? `&aoi_id=${encodeURIComponent(aoiId)}` : ""}`,
+      { timeoutMs: 8000, retries: 0 },
+    ),
+  context: (aoiId) => request(`/aois/${aoiId}/context`),
   layerPngUrl: (aoiId, layerId, date) =>
     `${API_V1}/layers/${aoiId}/${layerId}.png${date ? `?date=${date}` : ""}`,
   inspect: (aoiId, lat, lon) => request(`/aois/${aoiId}/inspect?lat=${lat}&lon=${lon}`),

@@ -1,52 +1,90 @@
-import { useEffect, useState } from "react";
-import { api } from "@/api/client.js";
+import { useMemo, useState } from "react";
 import { useMissionStore } from "@/store/useMissionStore.js";
 
-// OSM inspection-candidates log (SRS §4.2 Tab 3, §5.5).
-export default function ExposureTable() {
-  const { activeAoiId } = useMissionStore();
-  const [rows, setRows] = useState([]);
-  const [note, setNote] = useState("");
+// Tab 3 — OSM inspection-candidates log (SRS §4.2.4, §5.5): sortable, click to fly the map.
+const COLUMNS = [
+  ["name", "Name"],
+  ["kind", "Kind"],
+  ["wet_observations", "Wet M/N"],
+];
 
-  useEffect(() => {
-    (async () => {
-      const res = await api.exposure(activeAoiId);
-      setRows(res.data?.ranked || []);
-      setNote(res.warning || res.data?.note || "");
-    })();
-  }, [activeAoiId]);
+export default function ExposureTable() {
+  const { exposure, setFlyTo } = useMissionStore();
+  const [sort, setSort] = useState({ key: "wet_observations", dir: -1 });
+  const [kind, setKind] = useState("all");
+
+  const rows = exposure?.ranked || [];
+  const kinds = useMemo(() => ["all", ...new Set(rows.map((r) => r.kind).filter(Boolean))], [rows]);
+  const sorted = useMemo(() => {
+    const filtered = kind === "all" ? rows : rows.filter((r) => r.kind === kind);
+    return [...filtered].sort((a, b) => {
+      const va = a[sort.key] ?? "";
+      const vb = b[sort.key] ?? "";
+      return (va > vb ? 1 : va < vb ? -1 : 0) * sort.dir;
+    });
+  }, [rows, sort, kind]);
+
+  const note = exposure?.warning || exposure?.note || "";
 
   return (
     <div>
-      <h3 className="mb-2 telemetry-mono text-xs uppercase tracking-wide text-cyan">
-        Ground Inspection Candidates
-      </h3>
+      <h3 className="mb-2 telemetry-mono text-xs uppercase tracking-wide text-cyan">Ground Inspection Candidates</h3>
       <p className="mb-2 text-[11px] italic text-slate-400">
-        Roads &amp; settlements wet on ≥3 NISAR observations. Inspection candidates only — never a damage claim.
+        {exposure?.note ||
+          "Roads & settlements wet on ≥3 NISAR observations. Inspection candidates only — never a damage claim."}
       </p>
       {rows.length === 0 ? (
         <p className="telemetry-mono text-xs text-slate-500">{note || "No candidates loaded yet."}</p>
       ) : (
-        <table className="w-full text-left text-xs telemetry-mono">
-          <thead className="text-slate-500">
-            <tr>
-              <th className="py-1">Name</th>
-              <th>Kind</th>
-              <th className="text-right">Wet M/N</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t border-grid hover:bg-grid/50">
-                <td className="py-1">{r.name}</td>
-                <td>{r.kind}</td>
-                <td className="text-right text-alert">
-                  {r.wet_observations}/{r.total_observations}
-                </td>
+        <>
+          <div className="mb-2 flex items-center gap-2 text-[11px] telemetry-mono text-slate-400">
+            <span>{sorted.length} candidates</span>
+            <select
+              aria-label="Filter by kind"
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+              className="ml-auto rounded border border-grid bg-orbital px-1"
+            >
+              {kinds.map((k) => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
+          </div>
+          <table className="w-full text-left text-xs telemetry-mono">
+            <thead className="text-slate-500">
+              <tr>
+                {COLUMNS.map(([key, label]) => (
+                  <th
+                    key={key}
+                    className={`cursor-pointer select-none py-1 hover:text-cyan ${key === "wet_observations" ? "text-right" : ""}`}
+                    onClick={() => setSort((s) => ({ key, dir: s.key === key ? -s.dir : key === "wet_observations" ? -1 : 1 }))}
+                  >
+                    {label} {sort.key === key ? (sort.dir === 1 ? "▲" : "▼") : ""}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sorted.map((r) => (
+                <tr
+                  key={r.id}
+                  onClick={() => r.center && setFlyTo(r.center, 14)}
+                  title={r.wet_dates?.length ? `wet on ${r.wet_dates.join(", ")}` : undefined}
+                  className={`border-t border-grid ${r.center ? "cursor-pointer hover:bg-grid/50" : ""}`}
+                >
+                  <td className="py-1">{r.name}</td>
+                  <td>{r.kind}</td>
+                  <td className="text-right text-alert">
+                    {r.wet_observations}/{r.total_observations}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[10px] text-slate-500">
+            {exposure?.source ? `Source: ${exposure.source}. ` : ""}© OpenStreetMap contributors. Click a row to fly the map.
+          </p>
+        </>
       )}
     </div>
   );
