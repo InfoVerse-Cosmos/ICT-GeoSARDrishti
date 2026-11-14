@@ -1,5 +1,12 @@
 import { useMissionStore } from "@/store/useMissionStore.js";
 
+// Short selector labels per AOI; falls back to the manifest name for any other AOI.
+const AOI_LABELS = {
+  aoi_assam_majuli: "Majuli–Kaziranga [Assam]",
+  aoi_nagpur_kanhan: "Kanhan–Pench [Nagpur]",
+  aoi_gujarat_kutch: "Rann of Kutch [Gujarat]",
+};
+
 // Top Mission Bar (SRS §4.2.1): NISAR identity, dual-AOI selector, status pills.
 export default function TopTelemetryBar({ onOpenProvenance }) {
   const { aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive, timelineMeta } =
@@ -25,7 +32,7 @@ export default function TopTelemetryBar({ onOpenProvenance }) {
       >
         {aois.map((a) => (
           <option key={a.aoi_id} value={a.aoi_id}>
-            {a.aoi_id === "aoi_assam_majuli" ? "Majuli–Kaziranga [Assam]" : "Kanhan–Pench [Nagpur]"}
+            {AOI_LABELS[a.aoi_id] || a.name || a.aoi_id}
           </option>
         ))}
       </select>
