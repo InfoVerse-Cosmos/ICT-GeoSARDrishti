@@ -34,6 +34,7 @@ echo [analyze] Installing processing dependencies...
 python -m pip install --quiet --upgrade pip
 python -m pip install --quiet numpy h5py pyproj || ( echo [analyze] Could not install core deps. Install Python 3.11, delete scripts\.venv, retry. & exit /b 1 )
 python -m pip install --quiet scikit-learn || echo [analyze] scikit-learn unavailable - GMM regimes will be skipped.
+python -m pip install --quiet geopandas shapely osmnx || echo [analyze] osmnx unavailable - inspection roads will be skipped.
 
 REM --- 3. build the pack -----------------------------------------------------
 REM No AOI_ID/AOI_NAME needed: each track/frame stack in the folder becomes its own area automatically.

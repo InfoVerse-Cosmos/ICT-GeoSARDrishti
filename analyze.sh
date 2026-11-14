@@ -51,6 +51,8 @@ if ! pip install --quiet numpy h5py pyproj; then
 fi
 # scikit-learn powers the optional GMM regime layer; best-effort, the pipeline degrades without it.
 pip install --quiet scikit-learn || note "scikit-learn unavailable — GMM regimes will be skipped."
+# geopandas/osmnx power the ground-inspection roads; best-effort too (needs internet at analysis time).
+pip install --quiet geopandas shapely osmnx || note "osmnx unavailable — inspection roads will be skipped."
 
 # --- 3. build the pack from your data ---------------------------------------
 # No AOI_ID/AOI_NAME needed: each track/frame stack in the folder becomes its own area automatically.

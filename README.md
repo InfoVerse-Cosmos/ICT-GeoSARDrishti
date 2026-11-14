@@ -124,7 +124,7 @@ This repo ships **no data and no pre-built results**. You bring your own NISAR g
    analyze.bat        # Windows
    ./analyze.sh       # macOS / Linux
    ```
-4. **Open <http://localhost:5173>.** Pick your area at the top-left, or tap **📊 Report**.
+4. **Open <http://localhost:5173>** (if that port is busy the terminal shows the actual one), click **Launch map**, pick your area at the top-left, or tap **📊 Report**. Direct link to the map: `http://localhost:5173/#/explore`.
 
 `analyze` installs everything on first run, auto-detects every area in your folder (one area per satellite track/frame, so several incidents in one folder are fine), builds the analysis, and starts the app. Expect roughly 10-15 minutes for a few 7 GB granules (the OpenStreetMap road download is the slow part).
 
