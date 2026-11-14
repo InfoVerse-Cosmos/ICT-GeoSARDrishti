@@ -30,12 +30,19 @@ def granules_from_dir(h5_dir: str | Path, aoi_id: str | None = None, check_footp
         if check_footprint and aoi_id:
             try:
                 from .gcov import bbox_intersects, granule_footprint
-                fp = granule_footprint(p)
-                g["footprint_bbox"] = fp
-                if fp and not bbox_intersects(fp, AOI_BOUNDS[aoi_id]):
-                    g["skipped"] = "footprint does not intersect AOI"
             except ImportError:
-                pass
+                granule_footprint = None
+            if granule_footprint is not None:
+                try:
+                    fp = granule_footprint(p)
+                except Exception as exc:  # noqa: BLE001 - truncated/corrupt/unreadable .h5 must not abort the gate
+                    print(f"[01] warning: skipping {p.name} — cannot read it "
+                          f"({type(exc).__name__}). Re-download it if the file is truncated.")
+                    g["skipped"] = "unreadable or truncated granule"
+                else:
+                    g["footprint_bbox"] = fp
+                    if fp and not bbox_intersects(fp, AOI_BOUNDS[aoi_id]):
+                        g["skipped"] = "footprint does not intersect AOI"
         out.append(g)
     return out
 

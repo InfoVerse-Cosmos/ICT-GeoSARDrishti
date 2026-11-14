@@ -54,6 +54,29 @@ pip install --quiet scikit-learn || note "scikit-learn unavailable — GMM regim
 # geopandas/osmnx power the ground-inspection roads; best-effort too (needs internet at analysis time).
 pip install --quiet geopandas shapely osmnx || note "osmnx unavailable — inspection roads will be skipped."
 
+# --- 2b. verify granules are complete (not truncated / still downloading) ---
+note "Checking that every granule opens (guards against truncated / in-progress downloads)…"
+bad=$(python - "$DATA_DIR" <<'PY'
+import sys, glob, os
+try:
+    import h5py
+except ImportError:
+    sys.exit(0)  # deps not ready; the build step will report it
+for f in sorted(glob.glob(os.path.join(sys.argv[1], "*.h5"))):
+    try:
+        with h5py.File(f, "r"):
+            pass
+    except Exception:
+        print(os.path.basename(f))
+PY
+)
+if [[ -n "$bad" ]]; then
+  err "These .h5 files in DATA/ could not be opened — truncated, corrupt, or a download is still running:"
+  printf '%s\n' "$bad" | sed 's/^/    - /' >&2
+  err "Wait for any downloads to finish (or re-download the files above), then run ./analyze.sh again."
+  exit 1
+fi
+
 # --- 3. build the pack from your data ---------------------------------------
 # No AOI_ID/AOI_NAME needed: each track/frame stack in the folder becomes its own area automatically.
 EXTRA=()
