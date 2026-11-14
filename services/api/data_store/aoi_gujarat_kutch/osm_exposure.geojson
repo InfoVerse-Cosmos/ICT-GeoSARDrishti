@@ -1,5 +1,0 @@
-{
-  "type": "FeatureCollection",
-  "features": [],
-  "_note": "Empty by design for aoi_gujarat_kutch: the Overpass/OSM network is not assured in this offline run, so no exposure features are extracted. When populated, entries are ground-INSPECTION CANDIDATES ONLY (wet on M>=3 NISAR observations), never a damage or stranded-people claim."
-}
