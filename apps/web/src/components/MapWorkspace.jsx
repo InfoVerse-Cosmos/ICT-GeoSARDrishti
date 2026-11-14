@@ -7,8 +7,59 @@ import { LAYERS, REGIME_LEGEND, useMissionStore } from "@/store/useMissionStore.
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 const OVERLAY_OPACITY = 0.85;
 
-// Center MapLibre GL JS viewport (SRS §4.2.2): RGBA overlays per date, before/after
-// comparison, OSM inspection candidates, regional context, pixel click -> evidence.
+// Key-free basemaps (all verified to serve tiles without an API key).
+// "nasa" = NASA EOSDIS GIBS Blue Marble — a real NASA earth backdrop (coarse, great for overview).
+export const BASEMAPS = {
+  dark: {
+    label: "Dark",
+    tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
+    attribution: "Tiles © Esri — Esri, HERE, Garmin",
+    maxzoom: 16,
+  },
+  satellite: {
+    label: "Satellite",
+    tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+    attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics",
+    maxzoom: 19,
+  },
+  street: {
+    label: "Street",
+    tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+    attribution: "© OpenStreetMap contributors",
+    maxzoom: 19,
+  },
+  terrain: {
+    label: "Terrain",
+    tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"],
+    attribution: "Tiles © Esri — Esri, USGS, NOAA",
+    maxzoom: 19,
+  },
+  nasa: {
+    label: "NASA Blue Marble",
+    tiles: ["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg"],
+    attribution: "Imagery © NASA EOSDIS GIBS",
+    maxzoom: 8,
+  },
+};
+
+function applyBasemap(map, id) {
+  const def = BASEMAPS[id] || BASEMAPS.dark;
+  if (map.getLayer("basemap")) map.removeLayer("basemap");
+  if (map.getSource("basemap")) map.removeSource("basemap");
+  map.addSource("basemap", {
+    type: "raster",
+    tiles: def.tiles,
+    tileSize: 256,
+    maxzoom: def.maxzoom || 19,
+    attribution: def.attribution,
+  });
+  // Keep the basemap directly above the background, beneath every SAR / vector layer.
+  const beforeId = map.getStyle().layers.find((l) => l.id !== "bg" && l.id !== "basemap")?.id;
+  map.addLayer({ id: "basemap", type: "raster", source: "basemap" }, beforeId);
+}
+
+// Center MapLibre GL JS viewport (SRS §4.2.2): switchable basemap, RGBA overlays per date,
+// before/after comparison, OSM inspection candidates, regional context, pixel click -> evidence.
 export default function MapWorkspace({ onPixelInspected }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
@@ -17,8 +68,9 @@ export default function MapWorkspace({ onPixelInspected }) {
 
   const {
     aois, activeAoiId, activeLayer, activeDate, compareDate, compareMix, timeline, showExposure,
-    exposure, clickedPixel, flyTo, connection,
+    exposure, clickedPixel, flyTo, connection, basemap,
     setActiveLayer, setClickedPixel, setEvidenceCard, setExposure, setCompareDate, setCompareMix, setShowExposure,
+    setBasemap,
   } = useMissionStore();
 
   const aoi = aois.find((a) => a.aoi_id === activeAoiId);
@@ -50,17 +102,11 @@ export default function MapWorkspace({ onPixelInspected }) {
     if (mapRef.current || !containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
+      // Just a dark background; the basemap effect adds tiles (Dark / Satellite / Street / Terrain / NASA).
       style: {
         version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors",
-          },
-        },
-        layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -0.6 } }],
+        sources: {},
+        layers: [{ id: "bg", type: "background", paint: { "background-color": "#0B0F19" } }],
       },
       center: [94.1, 26.9],
       zoom: 9,
@@ -72,7 +118,7 @@ export default function MapWorkspace({ onPixelInspected }) {
       pending.forEach((fn) => fn(map));
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 
     map.on("click", async (e) => {
       const { lat, lng } = e.lngLat;
@@ -96,6 +142,11 @@ export default function MapWorkspace({ onPixelInspected }) {
       lastImageRef.current = {};
     };
   }, [setClickedPixel, setEvidenceCard]);
+
+  // ---- basemap switch (via the ready-queue, so it never races the map "load") ----------
+  useEffect(() => {
+    whenReady((map) => applyBasemap(map, basemap), "basemap");
+  }, [basemap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- AOI boundary + fit ------------------------------------------------------------
   useEffect(() => {
@@ -285,6 +336,22 @@ export default function MapWorkspace({ onPixelInspected }) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Basemap switcher (bottom-left) */}
+      <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 rounded border border-grid bg-panel/90 p-1 text-[10px] telemetry-mono">
+        <span className="px-1 py-1 text-slate-500">BASEMAP</span>
+        {Object.entries(BASEMAPS).map(([id, d]) => (
+          <button
+            key={id}
+            onClick={() => setBasemap(id)}
+            className={`rounded px-2 py-1 ${
+              basemap === id ? "bg-isro/30 text-isro" : "text-slate-300 hover:bg-grid"
+            }`}
+          >
+            {d.label}
+          </button>
+        ))}
       </div>
 
       <Legend layer={activeLayer} />

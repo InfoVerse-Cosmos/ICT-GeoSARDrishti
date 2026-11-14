@@ -44,7 +44,7 @@ Both are queried by default, and maturity is taken from the collection.
 # Backend (Python 3.11+; 3.14 also works with unpinned versions)
 cd services/api
 python -m venv .venv && .venv/Scripts/activate        # macOS/Linux: source .venv/bin/activate
-pip install -r requirements-dev.txt                    # if pins fail on 3.13+/3.14: pip install fastapi "uvicorn[standard]" pydantic pydantic-settings httpx numpy python-dotenv pytest
+pip install -r requirements-dev.txt                    # version ranges -> wheels exist for Python 3.11 … 3.14
 
 # Pipeline (the heavy geo stack — dev machines only)
 cd ../../scripts

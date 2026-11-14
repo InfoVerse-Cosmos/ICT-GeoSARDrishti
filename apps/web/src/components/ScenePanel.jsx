@@ -41,6 +41,7 @@ export default function ScenePanel() {
             <Metric label="Flooded vegetation" value={m.flooded_veg_km2} unit="km²" colour="text-fveg" />
             <Metric label="· natural" value={m.natural_flooded_veg_km2} unit="km²" colour="text-fveg" />
             <Metric label="· paddy-like" value={m.paddy_like_km2} unit="km²" colour="text-paddy" />
+            <Metric label="Dry / other" value={m.dry_km2} unit="km²" colour="text-slate-300" />
             <Metric label="Valid pixels" value={m.valid_pixel_pct} unit="%" />
             <Metric label="AOI coverage" value={m.aoi_coverage_pct} unit="%" />
             <Metric label="Otsu τ HH" value={m.otsu_hh_db} unit="dB" />
@@ -90,6 +91,14 @@ export default function ScenePanel() {
             </span>{" "}
             <span className="text-slate-500">occurrence &lt; 20%, open-water class only</span>
           </li>
+          <li>
+            ΔHH double-bounce threshold:{" "}
+            <span className="telemetry-mono">
+              {prov?.delta_hh_params
+                ? `≥ ${prov.delta_hh_params.min_delta_hh_db} dB (ΔRatio ≥ ${prov.delta_hh_params.min_delta_ratio_db} dB)`
+                : "≥ 3.0 dB"}
+            </span>
+          </li>
           {prov?.calibration_check && (
             <li>
               Calibration {prov.calibration_check.provisional_date} → {prov.calibration_check.validated_date}:{" "}
@@ -101,6 +110,16 @@ export default function ScenePanel() {
           )}
         </ul>
       </Section>
+
+      {prov?.limitations?.length > 0 && (
+        <Section title="Limitations">
+          <ul className="list-disc space-y-1 pl-4 text-[11px] text-slate-400">
+            {prov.limitations.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       {prov?.gmm?.regime_area_km2 && (
         <Section title="GMM hydrological regimes (unsupervised)">

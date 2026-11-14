@@ -39,6 +39,7 @@ export const useMissionStore = create((set) => ({
   compareMix: 0.5, // 0 = only "before", 1 = only "after"
   activeLayer: "open_water",
   showExposure: true,
+  basemap: "dark", // dark | satellite | street | terrain | nasa
   clickedPixel: null, // { lat, lon, ...telemetry }
   evidenceCard: null,
   exposure: null, // { geojson, ranked, ... }
@@ -61,6 +62,7 @@ export const useMissionStore = create((set) => ({
   setCompareMix: (compareMix) => set({ compareMix }),
   setActiveLayer: (activeLayer) => set({ activeLayer }),
   setShowExposure: (showExposure) => set({ showExposure }),
+  setBasemap: (basemap) => set({ basemap }),
   setClickedPixel: (clickedPixel) => set({ clickedPixel }),
   setEvidenceCard: (evidenceCard) => set({ evidenceCard }),
   setExposure: (exposure) => set({ exposure }),
