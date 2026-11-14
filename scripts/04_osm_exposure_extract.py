@@ -1,43 +1,39 @@
 """04 — OSM infrastructure exposure (SRS §5.5, §9 Phase 2).
 
 Downloads OSM roads (highway=*) and settlements (place=village|hamlet|town) via
-osmnx for the AOI, intersects them with the hydroperiod raster, and exports every
-segment/settlement wet on M>=3 acquisitions as ground-inspection candidates.
+osmnx for the AOI (or reads a local GeoJSON/GPKG), samples the per-date wet
+classes along every geometry, and exports features wet on M >= 3 acquisitions
+as ground-inspection candidates (data_store/<aoi>/osm_exposure.geojson).
 
 Owner: Sakshi (@sakshitayade)
 
 These are INSPECTION CANDIDATES ONLY — never a damage or stranded-people claim.
+
+Example:
+    python scripts/04_osm_exposure_extract.py --aoi aoi_assam_majuli [--osm-file roads_villages.geojson]
 """
 from __future__ import annotations
 
 import argparse
-import json
+import sys
 from pathlib import Path
 
-DATA_STORE = Path(__file__).resolve().parent.parent / "services" / "api" / "data_store"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-MIN_WET_OBSERVATIONS = 3
+from geosar_pipeline.common import AOI_BOUNDS, MIN_WET_OBSERVATIONS, data_store  # noqa: E402
+from geosar_pipeline import exposure  # noqa: E402
+
+DATA_STORE = data_store()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--aoi", required=True)
-    args = parser.parse_args()
-
-    # TODO(Phase 2):
-    #   import osmnx as ox, geopandas as gpd
-    #   roads = ox.graph_to_gdfs(ox.graph_from_bbox(...))  # highway=*
-    #   villages = ox.features_from_bbox(..., tags={"place": ["village","hamlet","town"]})
-    #   sample hydroperiod raster along each geometry; count wet observations;
-    #   keep features with wet_observations >= MIN_WET_OBSERVATIONS.
-    out = {
-        "type": "FeatureCollection",
-        "features": [],
-        "_note": f"SCAFFOLD: filled in Phase 2. Threshold M>={MIN_WET_OBSERVATIONS}. Inspection candidates only.",
-    }
-    out_path = DATA_STORE / args.aoi / "osm_exposure.geojson"
-    out_path.write_text(json.dumps(out, indent=2))
-    print(f"[04] SCAFFOLD: wrote empty exposure FeatureCollection to {out_path}")
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--aoi", required=True, choices=list(AOI_BOUNDS))
+    p.add_argument("--osm-file", help="offline OSM extract (GeoJSON/GPKG with highway/place columns)")
+    p.add_argument("--min-wet", type=int, default=MIN_WET_OBSERVATIONS)
+    p.add_argument("--data-store", help="override data_store dir")
+    args = p.parse_args()
+    exposure.run(args.aoi, data_store(args.data_store), osm_file=args.osm_file, min_wet=args.min_wet)
 
 
 if __name__ == "__main__":

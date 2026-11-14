@@ -1,37 +1,34 @@
 """03 — GMM regimes + OPERA DSWx / JRC validation (SRS §5.4-5.5, §9 Phase 2).
 
-Runs an unsupervised 5-cluster Gaussian Mixture Model on each pixel's temporal
-SAR feature vector, maps clusters to the 5 named hydrological regimes, computes
-OPERA DSWx-S1/NI inter-sensor agreement %, and JRC occurrence context.
+Runs an unsupervised Gaussian Mixture Model (k=5) on each pixel's temporal SAR
+feature vector, maps clusters to the 5 named hydrological regimes, and
+(optionally) computes OPERA DSWx inter-sensor agreement and the JRC
+"unusual open water" layer.
 
 Owner: Sakshi (@sakshitayade)
 
 Feature vector per pixel (SRS §5.4):
     x = [mean(HH), min(HH), max(dHH), mean(HH-HV), M_open/N, M_fveg/N]
+
+Example:
+    python scripts/03_gmm_and_validation.py --aoi aoi_assam_majuli \
+        [--jrc occurrence_90E_30N.tif] [--dswx OPERA_L3_DSWx-S1_..._WTR.tif --dswx-date 2026-10-16]
 """
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
-from sklearn.mixture import GaussianMixture
 
-DATA_STORE = Path(__file__).resolve().parent.parent / "services" / "api" / "data_store"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-REGIME_NAMES = [
-    "Permanent River / Deep Channel",
-    "Seasonal Open Floodplain / Beel",
-    "Seasonally Flooded Canopy / Tall Grassland",
-    "Seasonal Paddy-Like Inundation Cycle",
-    "Stable Dry Upland / Levee",
-]
+from geosar_pipeline.common import AOI_BOUNDS, REGIME_NAMES, data_store  # noqa: E402,F401
+from geosar_pipeline import regimes  # noqa: E402
+from geosar_pipeline.regimes import fit_gmm  # noqa: E402,F401
 
-
-def fit_gmm(features: np.ndarray, k: int = 5) -> np.ndarray:
-    """features: (n_pixels, 6) -> cluster index per pixel."""
-    gmm = GaussianMixture(n_components=k, covariance_type="full", random_state=42)
-    return gmm.fit_predict(features)
+DATA_STORE = data_store()
 
 
 def dswx_agreement(nisar_open: np.ndarray, dswx_open: np.ndarray) -> float:
@@ -44,15 +41,16 @@ def dswx_agreement(nisar_open: np.ndarray, dswx_open: np.ndarray) -> float:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--aoi", required=True)
-    parser.parse_args()
-    # TODO(Phase 2): load time_series_cube.npz, build feature matrix, fit_gmm,
-    #   order clusters into REGIME_NAMES by hydrology, load temporally-nearest
-    #   OPERA DSWx granule for agreement %, intersect JRC occurrence (<20% = unusual),
-    #   and write results back into cube + manifest provenance.
-    print("[03] SCAFFOLD: implement GMM + DSWx/JRC validation in Phase 2.")
-    print(f"      Regimes -> {REGIME_NAMES}")
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--aoi", required=True, choices=list(AOI_BOUNDS))
+    p.add_argument("--k", type=int, default=5)
+    p.add_argument("--jrc", help="JRC Global Surface Water occurrence GeoTIFF")
+    p.add_argument("--dswx", help="OPERA DSWx-S1/NI WTR GeoTIFF")
+    p.add_argument("--dswx-date", help="DSWx acquisition date (YYYY-MM-DD); nearest NISAR date is compared")
+    p.add_argument("--data-store", help="override data_store dir")
+    args = p.parse_args()
+    regimes.run(args.aoi, data_store(args.data_store), k=args.k, jrc=args.jrc, dswx=args.dswx,
+                dswx_date=args.dswx_date)
 
 
 if __name__ == "__main__":
