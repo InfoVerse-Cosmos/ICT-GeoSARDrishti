@@ -1,6 +1,7 @@
 "use client";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef } from "react";
+import { isWebglAvailable } from "@/lib/webgl.js";
 const SAT = "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg";
 function style() {
   return {
@@ -24,18 +25,24 @@ function HeroTerrain() {
   const raf = useRef(null);
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
-    const map = new maplibregl.Map({
-      container: ref.current,
-      style: style(),
-      center: [79, 24],
-      // India / Himalaya facing us
-      zoom: 2.75,
-      pitch: 0,
-      bearing: 0,
-      maxPitch: 85,
-      attributionControl: { compact: true },
-      dragRotate: true
-    });
+    if (!isWebglAvailable()) return; // no WebGL: keep the gradient backdrop, don't crash the hero
+    let map;
+    try {
+      map = new maplibregl.Map({
+        container: ref.current,
+        style: style(),
+        center: [79, 24],
+        // India / Himalaya facing us
+        zoom: 2.75,
+        pitch: 0,
+        bearing: 0,
+        maxPitch: 85,
+        attributionControl: { compact: true },
+        dragRotate: true
+      });
+    } catch {
+      return;
+    }
     map.scrollZoom.disable();
     spin.current = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     mapRef.current = map;
