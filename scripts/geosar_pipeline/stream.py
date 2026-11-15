@@ -98,12 +98,25 @@ def subset_one(url: str, out_path: str, bbox, name: str) -> dict:
     if out_path.exists():
         try:
             with h5py.File(out_path, "r") as f:
-                if f.attrs.get("GEOSAR_STREAM_COMPLETE", 0) == 1:
+                saved = f.attrs.get("GEOSAR_STREAM_BBOX")
+                same = saved is not None and np.allclose(np.asarray(saved, dtype=float), np.asarray(bbox, dtype=float), atol=1e-6)
+                if f.attrs.get("GEOSAR_STREAM_COMPLETE", 0) == 1 and same:
                     return {"name": name, "cached": True, "seconds": 0.0, "mb": out_path.stat().st_size / 1e6}
         except Exception:  # noqa: BLE001 - half-written file from an interrupted run: redo
             pass
     ea = _login()
     remote = ea.open([url])[0]
+    # Optional experiment only: GEOSAR_STREAM_BLOCK_MB=<n> swaps earthaccess's 16 MB read-ahead for n-MB blocks.
+    # Measured on a slow link it did NOT help, so it is off by default.
+    block_mb = float(os.environ.get("GEOSAR_STREAM_BLOCK_MB", "0") or 0)
+    if block_mb > 0:
+        try:
+            import fsspec.caching as fc
+            bs = int(block_mb * 1024 * 1024)
+            remote.blocksize = bs
+            remote.cache = fc.BlockCache(bs, remote._fetch_range, remote.size, maxblocks=64)
+        except Exception:  # noqa: BLE001
+            pass
     tmp = out_path.with_suffix(".part")
     with h5py.File(remote, "r") as h, h5py.File(tmp, "w") as o:
         g = h[GRID]
@@ -136,6 +149,7 @@ def subset_one(url: str, out_path: str, bbox, name: str) -> dict:
                     except Exception:  # noqa: BLE001 - non-essential metadata
                         pass
         o.attrs["GEOSAR_STREAM_COMPLETE"] = 1
+        o.attrs["GEOSAR_STREAM_BBOX"] = np.asarray(bbox, dtype=float)
         o.attrs["GEOSAR_STREAM_WINDOW"] = np.array([r0, r1, c0, c1])
     tmp.replace(out_path)
     return {"name": name, "cached": False, "seconds": round(time.time() - t0, 1),
@@ -154,7 +168,7 @@ def subset_with_retry(url: str, out_path: str, bbox, name: str, attempts: int = 
     raise RuntimeError(f"{name}: failed after {attempts} attempts ({type(last).__name__}: {str(last)[:120]})")
 
 
-def fetch_stack(stack: list[dict], bbox, cache_dir: Path, workers: int = 3, log=print) -> list[Path]:
+def fetch_stack(stack: list[dict], bbox, cache_dir: Path, workers: int = int(os.environ.get("GEOSAR_STREAM_WORKERS", "3")), log=print) -> list[Path]:
     """Stream the AOI window of every granule in the stack (parallel processes), return the mini-file paths.
 
     Already-streamed dates are reused from the cache. A date that still fails after retries is skipped with a

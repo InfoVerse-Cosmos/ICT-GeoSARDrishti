@@ -87,3 +87,24 @@ def test_fetch_stack_needs_two_dates_and_tolerates_one_failure(tmp_path, monkeyp
     assert [p.name for p in paths] == ["G1.h5", "G2.h5"]
     with pytest.raises(RuntimeError, match="only 1 date"):
         stream.fetch_stack([mk(1), mk(2, bad=True), mk(3, bad=True)], [1, 2, 3, 4], tmp_path, log=lambda *_: None)
+
+
+def test_same_day_multi_mode_granules_collapse_to_one_per_date():
+    """NISAR images a frame on one day in several modes; only the dual-pol, widest-bandwidth one is kept."""
+    from geosar_pipeline import common
+
+    def g(name):
+        return common.parse_granule_name(name)
+
+    stack = [
+        g("NISAR_L2_PR_GCOV_024_084_D_070_2005_QPDH_A_20260702T005150_20260702T005155_P05023_N_P_J_001"),
+        g("NISAR_L2_PR_GCOV_024_084_D_070_2005_DHDH_M_20260702T005150_20260702T005225_P05023_N_F_J_001"),
+        g("NISAR_L2_PR_GCOV_024_084_D_070_4005_DHDH_A_20260702T005158_20260702T005225_P05023_N_F_J_001"),
+        g("NISAR_L2_PR_GCOV_025_084_D_070_2005_DHDH_M_20260714T005149_20260714T005224_P05023_F_F_J_001"),
+        g("NISAR_L2_PR_GCOV_025_084_D_070_4005_DHDH_A_20260714T005157_20260714T005224_P05023_F_F_J_001"),
+    ]
+    tf, picked = common.select_best_track(stack, "084/070")
+    assert tf == "084/070" and [p["date"] for p in picked] == ["2026-07-02", "2026-07-14"]
+    assert all(p["mode"] == "4005" and p["pol_code"] == "DHDH" for p in picked)
+    _, auto = common.select_best_track(stack)                     # without a forced track/frame too
+    assert [p["date"] for p in auto] == ["2026-07-02", "2026-07-14"]

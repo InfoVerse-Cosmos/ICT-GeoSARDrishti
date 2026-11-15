@@ -156,23 +156,39 @@ def group_by_track_number(granules: list[dict]) -> dict[int, list[dict]]:
     return dict(groups)
 
 
+def one_per_date(granules: list[dict]) -> list[dict]:
+    """Keep ONE granule per acquisition date.
+
+    NISAR can image the same frame on the same day in several radar modes (e.g. 4005 dual-pol HH+HV,
+    2005 dual-pol, and a short quad-pol piece). Mixing them would duplicate dates in the time series, so
+    prefer, in order: dual-pol HH+HV (DHDH), the higher-bandwidth mode (4005 over 2005), then the latest.
+    """
+    def rank(g: dict):
+        try:
+            bw = int(g.get("mode") or 0)
+        except (TypeError, ValueError):
+            bw = 0
+        return (g.get("pol_code") == "DHDH", bw, g.get("start_utc", ""))
+
+    best: dict[str, dict] = {}
+    for g in granules:
+        cur = best.get(g["date"])
+        if cur is None or rank(g) > rank(cur):
+            best[g["date"]] = g
+    return sorted(best.values(), key=lambda g: g["start_utc"])
+
+
 def select_best_track(granules: list[dict], track_frame: str | None = None) -> tuple[str, list[dict]]:
-    """Same-track stack with the most dates (ties -> latest start). SRS §3.2."""
+    """Same-track stack with the most dates (ties -> latest start), one granule per date. SRS §3.2."""
     groups = group_by_track(granules)
     if not groups:
         raise ValueError("no NISAR GCOV granules found")
     if track_frame:
         if track_frame not in groups:
             raise ValueError(f"track/frame {track_frame} not in {sorted(groups)}")
-        return track_frame, groups[track_frame]
+        return track_frame, one_per_date(groups[track_frame])
     best = max(groups, key=lambda k: (len({g['date'] for g in groups[k]}), groups[k][-1]["start_utc"]))
-    # one granule per date
-    seen, stack = set(), []
-    for g in groups[best]:
-        if g["date"] not in seen:
-            seen.add(g["date"])
-            stack.append(g)
-    return best, stack
+    return best, one_per_date(groups[best])
 
 
 def fallback_plan(n_dates: int, dual_pol: bool) -> str:
