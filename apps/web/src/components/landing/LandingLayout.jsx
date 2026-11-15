@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import LandingPage from './LandingPage.jsx';
+import { useMissionStore } from '@/store/useMissionStore.js';
 import { ThemeToggle } from './ThemeToggle.jsx';
 import '@/landing.css';
 
@@ -47,7 +48,7 @@ export default function LandingLayout() {
           </div>}
         </div>
         <a href="#/" className="agency-wordmark" aria-label="GeoSAR Drishti home"><img className="agency-logo" src="/images/GeoSAR.jpeg" alt="GeoSAR Drishti — Earth insights through radar vision" width="1600" height="800" /></a>
-        <div className="agency-nav-actions"><a href="#about-sar" className="nav-science">Mission &amp; Science</a><ThemeToggle /></div>
+        <div className="agency-nav-actions"><a href="#/explore" className="nav-science" onClick={() => useMissionStore.getState().setAudienceMode('simple')}>Open workspace</a><ThemeToggle /></div>
       </nav>
       <nav className="topic-nav" aria-label="Page sections">{NAV_LINKS.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<span>NASA SPACE APPS 2026 ? INDEPENDENT PROJECT</span></nav>
     </header>

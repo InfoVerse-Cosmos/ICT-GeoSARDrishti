@@ -54,6 +54,15 @@ describe('landing navigation and theme', () => {
 });
 
 describe('landing experience selection', () => {
+  it('opens the simple workspace from the header', () => {
+    useMissionStore.getState().setAudienceMode('scientific');
+    render(<LandingLayout />);
+    const link = screen.getByRole('link', { name: 'Open workspace' });
+    expect(link.getAttribute('href')).toBe('#/explore');
+    fireEvent.click(link);
+    expect(useMissionStore.getState().audienceMode).toBe('simple');
+  });
+
   it('opens the workspace directly from the hero in simple mode without a mode-selection step', () => {
     useMissionStore.getState().setAudienceMode('scientific');
     render(<LandingLayout />);
@@ -70,8 +79,8 @@ describe('landing experience selection', () => {
     expect(screen.queryByRole('group', { name: 'Choose your experience' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Explore/ }));
     const workspaceLinks = screen.getAllByRole('link').filter(link => link.getAttribute('href') === '#/explore');
-    expect(workspaceLinks).toHaveLength(1);
-    expect(workspaceLinks[0].textContent).toContain('Start exploring');
+    expect(workspaceLinks).toHaveLength(2);
+    expect(workspaceLinks.some(link => link.textContent.includes('Start exploring'))).toBe(true);
     for (const link of screen.getAllByRole('link')) {
       const href = link.getAttribute('href');
       if (href?.startsWith('#') && !href.startsWith('#/')) {
@@ -94,7 +103,7 @@ describe('landing case studies and walkthrough', () => {
   it('shows all six supplied Assam images with links to their full resolution', () => {
     render(<LandingLayout />);
     for (let number = 1; number <= 6; number++) {
-      const image = document.querySelector(`img[src="/images/projectdemo${number}.jpeg"]`);
+      const image = document.querySelector(`.demo-gallery img[src="/images/projectdemo${number}.jpeg"]`);
       expect(image).toBeTruthy();
       expect(image.closest('a').getAttribute('href')).toBe(`/images/projectdemo${number}.jpeg`);
     }
