@@ -108,25 +108,6 @@
 .landing .radar-grid p { font-size: .875rem; color: rgb(var(--muted)); margin-top: 8px; }
 .landing .data-caption { margin-top: 30px; border-top: 1px solid rgb(var(--line) / .15); padding-top: 18px; font-size: .75rem; color: rgb(var(--muted)); }
 
-/* Audience selection retains the real workspace mode and study-area controls. */
-.landing .mission-guide, .landing #field-guide { max-width: 1400px; width: calc(100% - 96px); padding: 65px 0 80px; }
-.landing .mission-guide h2, .landing #field-guide h2 { font-size: clamp(2rem, 3.4vw, 3.15rem); }
-.landing .audience-switch { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid rgb(var(--line) / .25); }
-.landing .audience-switch button { min-height: 48px; padding: 13px 17px; font-size: .8rem; font-weight: 700; border-bottom: 3px solid transparent; }
-.landing .audience-switch button[aria-pressed=true] { border-bottom-color: #d83933; background: rgb(var(--line) / .05); }
-.landing .guide-console { display: grid; grid-template-columns: 1fr 1fr; background: rgb(var(--panel)); }
-.landing .guide-copy { padding: 40px; }
-.landing .guide-copy h3 { font-size: 1.8rem; }
-.landing .guide-copy select { display: block; width: 100%; background: rgb(var(--ink)); color: rgb(var(--fg)); border: 1px solid rgb(var(--line) / .4); border-radius: 0; min-height: 48px; padding: 12px; font-size: .9rem; }
-.landing .guide-steps { padding: 16px 40px; border-left: 1px solid rgb(var(--line) / .14); }
-.landing .guide-steps li { display: flex; gap: 22px; padding: 22px 0; }
-.landing .guide-steps li + li { border-top: 1px solid rgb(var(--line) / .15); }
-.landing .step-number { font: 1.1rem 'Landing DM Mono', monospace; color: rgb(var(--muted)); padding-top: 2px; }
-.landing .reading-key { display: flex; align-items: center; flex-wrap: wrap; gap: 15px 25px; padding: 22px 0 0; font-size: .75rem; color: rgb(var(--muted)); }
-.landing .reading-key strong { color: rgb(var(--fg)); }
-.landing .reading-key span { display: inline-flex; align-items: center; gap: 8px; }
-.landing .reading-key i { width: 11px; height: 11px; border-radius: 50%; }
-.landing .reading-key a { text-decoration: underline; }
 
 .landing .science-feature { background: #080808; color: white; padding-block: 90px; }
 .landing .science-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; }
@@ -136,13 +117,6 @@
 .landing .science-facts article { border-top: 1px solid #606060; padding: 24px 0 10px; }
 .landing .science-facts h3 { font-size: 1.4rem; }
 .landing .science-facts p { font-size: .9rem; margin-block: 12px 20px; }
-.landing .field-questions { border-top: 1px solid rgb(var(--line) / .25); }
-.landing .field-questions details { border-bottom: 1px solid rgb(var(--line) / .25); }
-.landing .field-questions summary { cursor: pointer; padding: 23px 0; font-family: 'Landing Inter', sans-serif; font-weight: 700; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.landing .field-questions summary::-webkit-details-marker { display: none; }
-.landing .field-questions summary span { font-size: 1.4rem; color: #d83933; }
-.landing .field-questions details[open] summary span { transform: rotate(45deg); }
-.landing .field-questions p { max-width: 850px; color: rgb(var(--muted)); padding-bottom: 24px; }
 
 .landing .team-section { padding-block: 15px 80px; }
 .landing .team-event { font-size: .8rem; color: rgb(var(--muted)); }
@@ -184,7 +158,7 @@
   .landing .footer-grid { gap: 40px; }
 }
 @media (max-width: 760px) {
-  .landing .page-container, .landing .mission-guide, .landing #field-guide { width: calc(100% - 40px); }
+  .landing .page-container { width: calc(100% - 40px); }
   .landing .agency-nav { height: 82px; padding: 0 20px; gap: 12px; }
   .landing .agency-wordmark { font-size: 1rem; gap: 8px; }
   .landing .orbit-mark { width: 35px; height: 35px; font-size: 20px; }
@@ -217,12 +191,6 @@
   .landing .feature-story-main h3 { font-size: 2rem; }
   .landing .feature-story h3 { font-size: 1.15rem; }
   .landing .feature-story-main h3 { font-size: 2rem; }
-  .landing .mission-guide, .landing #field-guide { padding-block: 35px 55px; }
-  .landing .guide-console { grid-template-columns: 1fr; }
-  .landing .guide-copy { padding: 25px; }
-  .landing .guide-steps { border-left: 0; border-top: 1px solid rgb(var(--line) / .15); padding: 0 25px; }
-  .landing .audience-switch { width: 100%; }
-  .landing .audience-switch button { flex: 1; padding-inline: 8px; }
   .landing .radar-grid { grid-template-columns: 1fr; gap: 30px; }
   .landing .science-feature { padding-block: 60px; }
   .landing .science-layout { grid-template-columns: 1fr; gap: 40px; }
