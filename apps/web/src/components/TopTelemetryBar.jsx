@@ -10,7 +10,7 @@ const AOI_LABELS = {
 // Top Mission Bar (SRS §4.2.1): NISAR identity, dual-AOI selector, status pills.
 // Simple mode hides the scientist pills (granule / track-frame / polarization /
 // maturity / plan) and the provenance detail; Scientist mode is unchanged.
-export default function TopTelemetryBar({ onOpenProvenance, onOpenReport }) {
+export default function TopTelemetryBar({ onOpenProvenance, onOpenReport, onOpenAnalyze }) {
   const {
     aois, activeAoiId, setActiveAoi, timeline, activeDate, connection, fallbackActive, timelineMeta,
     audienceMode, setAudienceMode,
@@ -73,6 +73,14 @@ export default function TopTelemetryBar({ onOpenProvenance, onOpenReport }) {
         className="rounded bg-nasa px-2 py-1 text-xs font-semibold text-white hover:bg-nasa/80"
       >
         📊 Report
+      </button>
+
+      <button
+        onClick={onOpenAnalyze}
+        title="Analyse any area and date range straight from NASA (no big downloads)"
+        className="rounded border border-grid px-2 py-1 text-xs text-slate-300 hover:text-cyan"
+      >
+        ＋ New area
       </button>
 
       <ConnectionPill connection={connection} fallbackActive={fallbackActive} />

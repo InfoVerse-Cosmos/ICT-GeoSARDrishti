@@ -160,12 +160,19 @@ def main() -> int:
     p.add_argument("--min-wet", type=int, default=None,
                    help="min wet observations for an inspection candidate (default: 2 for short stacks of <6 dates, else 3)")
     p.add_argument("--data-store", help="override data_store dir (default services/api/data_store)")
+    p.add_argument("--stream", action="store_true",
+                   help="NO downloads: search NASA Earthdata for --bbox between --start and --end and stream ONLY that "
+                        "window of each NISAR granule (needs EARTHDATA_TOKEN in services/api/.env)")
+    p.add_argument("--start", help="--stream: first date YYYY-MM-DD")
+    p.add_argument("--end", help="--stream: last date YYYY-MM-DD")
     args = p.parse_args()
 
     if args.aoi_id and not AOI_ID_RE.match(args.aoi_id):
         p.error("--aoi-id must contain only lowercase letters, digits and underscores")
 
     store = common.data_store(args.data_store)
+    if args.stream:
+        return run_stream(args, store, p)
     # --h5-dir is repeatable (append); default to GEOSAR_DATA_DIR / the repo-root DATA/ when unset.
     default_dir = envcfg.get("GEOSAR_DATA_DIR") or str(common.REPO_ROOT / "DATA")
     h5_dir_args = args.h5_dir or [default_dir]
@@ -250,6 +257,48 @@ def main() -> int:
     print("\n[byod] done. Results are a radar-derived surface/canopy-water indication for inspection, "
           "not a confirmed flood or damage claim.")
     return 1 if failures == len(jobs) else 0
+
+
+def run_stream(args, store, p):
+    """Analyse ANY area/date range straight from NASA Earthdata Cloud (window-only streaming, no big downloads)."""
+    from geosar_pipeline import stream
+    if not (args.bbox and args.start and args.end):
+        p.error("--stream needs --bbox west,south,east,north  --start YYYY-MM-DD  --end YYYY-MM-DD")
+    bbox = args.bbox
+    granules = stream.search(bbox, args.start, args.end)
+    if not granules:
+        p.error("NASA has no NISAR L2 GCOV granule over that area in that period "
+                "(NISAR coverage is not global every 12 days: try a wider date range or another area)")
+    by_tf = {}
+    for g in granules:
+        by_tf.setdefault(g["track_frame"], set()).add(g["date"])
+    print("[stream] tracks/frames over the area: "
+          + ", ".join(f"{tf}: {len(d)} date(s)" for tf, d in sorted(by_tf.items())))
+    tf, stack = stream.pick_stack(granules, args.track_frame)
+    print(f"[stream] using track/frame {tf}: {[g['date'] for g in stack]}")
+    aoi_id = args.aoi_id or auto_identity(tf, bbox)
+    name = args.name or f"Custom area {(bbox[1] + bbox[3]) / 2:.2f}N {(bbox[0] + bbox[2]) / 2:.2f}E"
+    base = Path(args.h5_dir[0] if args.h5_dir else (envcfg.get("GEOSAR_DATA_DIR") or str(common.REPO_ROOT / "DATA")))
+    cache_dir = base.expanduser() / "_stream" / aoi_id
+    files = stream.fetch_stack(stack, bbox, cache_dir)
+    # Build in a scratch folder and move it into place only when everything succeeded, so a stopped or failed run
+    # can never leave a half-built (or half-overwritten) area in the app's list. The data store ignores "_*" folders.
+    import shutil
+    scratch = store / "_building"
+    shutil.rmtree(scratch / aoi_id, ignore_errors=True)
+    build_pack(args, scratch, [cache_dir], files, aoi_id, name, bbox, tf)
+    if (store / aoi_id).exists():
+        shutil.rmtree(store / aoi_id)
+    shutil.move(str(scratch / aoi_id), str(store / aoi_id))
+    shutil.rmtree(scratch, ignore_errors=True)
+    try:
+        from geosar_pipeline import mirror
+        mirror.run(store)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[byod] offline mirror not refreshed: {exc}")
+    print("\n[byod] done. Results are a radar-derived surface/canopy-water indication for inspection, "
+          "not a confirmed flood or damage claim.")
+    return 0
 
 
 def auto_identity(track_frame, fp):

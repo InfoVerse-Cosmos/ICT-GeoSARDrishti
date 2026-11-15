@@ -10,6 +10,7 @@ import ExposureTable from "@/components/ExposureTable.jsx";
 import ProvenanceModal from "@/components/ProvenanceModal.jsx";
 import ScenePanel from "@/components/ScenePanel.jsx";
 import ReportModal from "@/components/ReportModal.jsx";
+import AnalyzeModal from "@/components/AnalyzeModal.jsx";
 import SimplePanel from "@/components/SimplePanel.jsx";
 
 import ErrorBoundary from "@/components/ErrorBoundary.jsx";
@@ -59,6 +60,8 @@ function MissionApp() {
   const [tab, setTab] = useState("metrics"); // metrics | trajectory | exposure
   const [provenanceOpen, setProvenanceOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const analyzeOpen = useMissionStore((s) => s.analyzeOpen);
+  const setAnalyzeOpen = useMissionStore((s) => s.setAnalyzeOpen);
   const [uplink, setUplink] = useState({ establishing: true, attempt: 0 });
   const offlineMirror = useRef(null);
 
@@ -115,7 +118,7 @@ function MissionApp() {
 
   return (
     <div data-theme={workspaceTheme} className="mission-workspace flex min-h-full lg:h-full flex-col bg-orbital text-slate-200">
-      <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} onOpenReport={() => setReportOpen(true)} />
+      <TopTelemetryBar onOpenProvenance={() => setProvenanceOpen(true)} onOpenReport={() => setReportOpen(true)} onOpenAnalyze={() => setAnalyzeOpen(true)} />
       {uplink.establishing && (
         <div
           role="status"
@@ -187,6 +190,7 @@ function MissionApp() {
 
       <ProvenanceModal open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
+      <AnalyzeModal open={analyzeOpen} onClose={() => setAnalyzeOpen(false)} />
     </div>
   );
 }

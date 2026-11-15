@@ -64,6 +64,7 @@ function applyBasemap(map, id) {
 export default function MapWorkspace({ onPixelInspected }) {
   const [layerError, setLayerError] = useState(false);
   const requestRef = useRef(0);
+  const lastPickRef = useRef(0);
   const inspectLocation = async (lat, lng) => {
     const requestId = ++requestRef.current;
     const aoiId = useMissionStore.getState().activeAoiId;
@@ -164,9 +165,16 @@ export default function MapWorkspace({ onPixelInspected }) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 
-    map.on("click", (e) => inspectRef.current(e.lngLat.lat, e.lngLat.lng));
+    map.on("click", (e) => {
+      // A drag/click made while choosing a new area is handled by the pick-mode effect; never inspect a pixel for it.
+      if (useMissionStore.getState().pickMode || Date.now() - lastPickRef.current < 600) return;
+      inspectRef.current(e.lngLat.lat, e.lngLat.lng);
+    });
     const observer = new ResizeObserver(() => map.resize());
     observer.observe(containerRef.current);
+    const reportBounds = () => { const b = map.getBounds(); useMissionStore.getState().setMapBounds([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]); };
+    map.on("moveend", reportBounds);
+    map.on("load", reportBounds);
     mapRef.current = map;
     return () => {
       observer.disconnect();
@@ -344,6 +352,70 @@ export default function MapWorkspace({ onPixelInspected }) {
     });
   }, [clickedPixel]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---- "Analyse a new area": crosshair while picking + preview rectangle -----------------------
+  const pickMode = useMissionStore((s) => s.pickMode);
+  const analyzeBox = useMissionStore((s) => s.analyzeBox);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map) map.getCanvas().style.cursor = pickMode ? "crosshair" : "";
+    if (!pickMode || !map) return undefined;
+    const MAX = 0.55; // degrees per side (backend limit is 0.6)
+    const st = () => useMissionStore.getState();
+    let start = null;
+    let startPx = null;
+    const clampTo = (a, b) => (Math.abs(b - a) > MAX ? a + Math.sign(b - a) * MAX : b);
+    const rect = (a, b) => {
+      const lon2 = clampTo(a.lng, b.lng), lat2 = clampTo(a.lat, b.lat);
+      return [Math.min(a.lng, lon2), Math.min(a.lat, lat2), Math.max(a.lng, lon2), Math.max(a.lat, lat2)];
+    };
+    map.dragPan.disable(); // the drag draws a rectangle instead of panning
+    const onDown = (e) => { start = e.lngLat; startPx = e.point; st().setAnalyzeBox(null); };
+    const onMove = (e) => { if (start) st().setAnalyzeBox(rect(start, e.lngLat)); };
+    // Listen on the WINDOW so releasing the mouse over a panel / outside the map still finishes the drag.
+    const onUp = (ev) => {
+      if (!start) return;
+      const r = map.getContainer().getBoundingClientRect();
+      const px = { x: Math.min(Math.max(ev.clientX - r.left, 0), r.width), y: Math.min(Math.max(ev.clientY - r.top, 0), r.height) };
+      const end = map.unproject([px.x, px.y]);
+      const moved = Math.hypot(px.x - startPx.x, px.y - startPx.y) > 10;
+      const picked = rect(start, end);
+      start = null;
+      lastPickRef.current = Date.now();
+      if (moved) st().setPickedBox(picked);
+      else st().setPickedPoint([end.lng, end.lat]); // a plain click: standard-size box around the point
+      st().setPickMode(false);
+      st().setAnalyzeOpen(true);
+    };
+    const onKey = (ev) => {
+      if (ev.key === "Escape") { st().setAnalyzeBox(null); st().setPickMode(false); st().setAnalyzeOpen(true); }
+    };
+    map.on("mousedown", onDown);
+    map.on("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      map.off("mousedown", onDown);
+      map.off("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("keydown", onKey);
+      map.dragPan.enable();
+    };
+  }, [pickMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    whenReady((map) => {
+      let data = EMPTY_FC;
+      if (analyzeBox) {
+        const [w, s, e, n] = analyzeBox;
+        data = { type: "Feature", geometry: { type: "Polygon", coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] } };
+      }
+      upsertGeojson(map, "analyze-box", data);
+      if (!map.getLayer("analyze-box-fill")) {
+        map.addLayer({ id: "analyze-box-fill", type: "fill", source: "analyze-box", paint: { "fill-color": "#FF671F", "fill-opacity": 0.12 } });
+        map.addLayer({ id: "analyze-box-line", type: "line", source: "analyze-box", paint: { "line-color": "#FF671F", "line-width": 3, "line-dasharray": [3, 2] } });
+      }
+    }, "analyze-box");
+  }, [analyzeBox]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ---- fly to (from Inspection Log) -------------------------------------------------------
   useEffect(() => {
     if (flyTo?.center) mapRef.current?.flyTo({ center: flyTo.center, zoom: flyTo.zoom, duration: 1200 });
@@ -363,6 +435,11 @@ export default function MapWorkspace({ onPixelInspected }) {
       </div>
       <div className="relative min-h-[360px] flex-1 lg:min-h-0">
       <div ref={containerRef} className="absolute inset-0" data-testid="map" />
+      {pickMode && (
+        <div role="status" className="absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded border border-isro bg-panel/95 px-4 py-2 text-sm font-semibold text-isro shadow-lg">
+          Drag a rectangle over the area you want (or just click for a standard-size box). Esc to cancel.
+        </div>
+      )}
 
       {/* Layer toggles */}
       <div className="absolute left-3 top-3 max-h-[60%] w-48 overflow-y-auto space-y-1 rounded border border-grid bg-panel/90 p-2 text-xs telemetry-mono">
