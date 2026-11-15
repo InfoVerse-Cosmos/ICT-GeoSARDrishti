@@ -41,6 +41,7 @@ Examples
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -163,6 +164,7 @@ def main() -> int:
     p.add_argument("--stream", action="store_true",
                    help="NO downloads: search NASA Earthdata for --bbox between --start and --end and stream ONLY that "
                         "window of each NISAR granule (needs EARTHDATA_TOKEN in services/api/.env)")
+    p.add_argument("--only-dates", help="--stream: comma-separated YYYY-MM-DD, fetch just these passes (default: all passes of the chosen track)")
     p.add_argument("--start", help="--stream: first date YYYY-MM-DD")
     p.add_argument("--end", help="--stream: last date YYYY-MM-DD")
     args = p.parse_args()
@@ -251,7 +253,7 @@ def main() -> int:
 
     try:
         from geosar_pipeline import mirror
-        mirror.run(store)  # offline mirror lists only the AOIs really analysed here
+        refresh_mirror(mirror, store)  # offline mirror lists only the AOIs really analysed here
     except Exception as exc:  # noqa: BLE001 - the mirror is a convenience, never fatal
         print(f"[byod] offline mirror not refreshed: {exc}")
     print("\n[byod] done. Results are a radar-derived surface/canopy-water indication for inspection, "
@@ -275,6 +277,14 @@ def run_stream(args, store, p):
     print("[stream] tracks/frames over the area: "
           + ", ".join(f"{tf}: {len(d)} date(s)" for tf, d in sorted(by_tf.items())))
     tf, stack = stream.pick_stack(granules, args.track_frame)
+    if args.only_dates:
+        want = {d.strip() for d in args.only_dates.split(",") if d.strip()}
+        stack = [g for g in stack if g["date"] in want]
+        missing = sorted(want - {g["date"] for g in stack})
+        if missing:
+            print(f"[stream] note: no pass on {missing} for track/frame {tf}; skipped")
+        if len(stack) < 2:
+            p.error(f"fewer than 2 of the chosen passes exist on track/frame {tf}")
     print(f"[stream] using track/frame {tf}: {[g['date'] for g in stack]}")
     aoi_id = args.aoi_id or auto_identity(tf, bbox)
     name = args.name or f"Custom area {(bbox[1] + bbox[3]) / 2:.2f}N {(bbox[0] + bbox[2]) / 2:.2f}E"
@@ -286,19 +296,41 @@ def run_stream(args, store, p):
     import shutil
     scratch = store / "_building"
     shutil.rmtree(scratch / aoi_id, ignore_errors=True)
-    build_pack(args, scratch, [cache_dir], files, aoi_id, name, bbox, tf)
+    # The cache folder may hold passes from earlier runs. Build ONLY from the passes chosen for this run:
+    # link them (no copy) into a private selection folder, otherwise old dates would leak into the analysis.
+    sel = cache_dir.parent / f"_sel_{aoi_id}"
+    shutil.rmtree(sel, ignore_errors=True)
+    sel.mkdir(parents=True)
+    chosen = []
+    for f in files:
+        dst = sel / Path(f).name
+        try:
+            os.link(f, dst)
+        except OSError:
+            shutil.copy2(f, dst)
+        chosen.append(dst)
+    try:
+        build_pack(args, scratch, [sel], chosen, aoi_id, name, bbox, tf)
+    finally:
+        shutil.rmtree(sel, ignore_errors=True)
     if (store / aoi_id).exists():
         shutil.rmtree(store / aoi_id)
     shutil.move(str(scratch / aoi_id), str(store / aoi_id))
     shutil.rmtree(scratch, ignore_errors=True)
     try:
         from geosar_pipeline import mirror
-        mirror.run(store)
+        refresh_mirror(mirror, store)
     except Exception as exc:  # noqa: BLE001
         print(f"[byod] offline mirror not refreshed: {exc}")
     print("\n[byod] done. Results are a radar-derived surface/canopy-water indication for inspection, "
           "not a confirmed flood or damage claim.")
     return 0
+
+
+def refresh_mirror(mirror, store):
+    """Update the app's offline mirror only for the app's own data store (a scratch --data-store must not touch it)."""
+    if Path(store).resolve() == common.data_store().resolve():
+        mirror.run(store)
 
 
 def auto_identity(track_frame, fp):

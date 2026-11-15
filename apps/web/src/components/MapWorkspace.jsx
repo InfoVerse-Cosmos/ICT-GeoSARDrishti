@@ -72,6 +72,7 @@ export default function MapWorkspace({ onPixelInspected }) {
     setClickedPixel({ lat, lon: lng, status: "loading" });
     setEvidenceCard(null);
     setEvidenceLoading(true);
+    useMissionStore.getState().setNarrating(false);
     inspectedCb.current?.();
     try {
       const res = await api.inspect(aoiId, lat.toFixed(5), lng.toFixed(5));
@@ -82,7 +83,9 @@ export default function MapWorkspace({ onPixelInspected }) {
         // 1) instant built-in card, 2) upgraded with the AI wording if/when it arrives (never blocks the UI)
         const card = await api.evidenceCard(payload);
         if (current()) { setEvidenceCard(card.data?.card || null); setEvidenceLoading(false); }
+        if (current()) useMissionStore.getState().setNarrating(true);
         const llm = await api.evidenceCard(payload, { narrate: true });
+        if (current()) useMissionStore.getState().setNarrating(false);
         if (current() && llm.data?.card?.mode === "llm_grounded") setEvidenceCard(llm.data.card);
       }
     } catch (error) {
@@ -425,14 +428,11 @@ export default function MapWorkspace({ onPixelInspected }) {
 
   return (
     <div className="flex h-full min-h-[420px] w-full flex-col lg:min-h-0">
-      <div className="flex flex-wrap gap-2 border-b border-grid bg-panel p-2 text-xs">
-      <form className="flex flex-wrap items-center gap-2" onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); inspectRef.current(Number(values.get("lat")), Number(values.get("lon"))); }}>
-        <label>Latitude <input name="lat" aria-label="Latitude" type="number" min="-90" max="90" step="any" required className="w-20 rounded border border-grid bg-orbital px-1" /></label>
-        <label>Longitude <input name="lon" aria-label="Longitude" type="number" min="-180" max="180" step="any" required className="w-20 rounded border border-grid bg-orbital px-1" /></label>
-        <button className="rounded border border-grid px-2 py-1">Inspect location</button>
-      </form>
-      {(layerError || (connection === "OFFLINE" && isRaster)) && <span role="status" className="text-isro">Layer unavailable</span>}
-      </div>
+      {(layerError || (connection === "OFFLINE" && isRaster)) && (
+        <div className="border-b border-grid bg-panel p-2 text-xs">
+          <span role="status" className="text-isro">Layer unavailable</span>
+        </div>
+      )}
       <div className="relative min-h-[360px] flex-1 lg:min-h-0">
       <div ref={containerRef} className="absolute inset-0" data-testid="map" />
       {pickMode && (

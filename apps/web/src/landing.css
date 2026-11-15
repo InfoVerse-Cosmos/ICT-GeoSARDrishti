@@ -234,3 +234,25 @@
   .landing .footer-intro { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .landing *, .landing *::before, .landing *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+/* ---- Light theme: masthead and hero follow the selected theme (they were always black). ---- */
+.landing.light .agency-header { background: #ffffff; color: #111; border-bottom: 1px solid #e2e2e2; }
+.landing.light .explore-trigger span { border-color: #8a8a8f; }
+.landing.light .nav-project-label { color: #5b5b61; }
+.landing.light .agency-nav-actions button { color: #222; border-color: #b4b4ba; }
+.landing.light .topic-nav { border-top-color: #e2e2e2; }
+.landing.light .topic-nav > span { color: #67676d; }
+.landing.light .explore-dropdown { background: #ffffff; color: #111; box-shadow: 0 18px 35px #0002; border-top-color: #cfcfd4; }
+.landing.light .explore-dropdown .section-kicker { color: #5b5b61; }
+.landing.light .explore-dropdown a { border-bottom-color: #dcdce0; }
+.landing.light .explore-dropdown small { color: #5b5b61; }
+.landing.light .earth-hero { background: radial-gradient(ellipse at 75% 40%, #ffffff 0%, #eef2f7 45%, #dde5ee 100%); color: #111; }
+.landing.light .hero-shade { background: linear-gradient(90deg, #fffe 0%, #fffa 38%, #fff0 78%), linear-gradient(0deg, #dde5ee 0%, transparent 40%); }
+.landing.light .hero-content .section-kicker { color: #4a4a50; }
+.landing.light .hero-content p { color: #2c2c31; }
+.landing.light .hero-topics a { border-top-color: #9a9aa0; }
+.landing.light .hero-topics .section-kicker { color: #55555b; }
+.landing.light .hero-credit { color: #5b5b61; }
+.landing.light .earth-fallback { mix-blend-mode: normal; }
+.landing.light .earth-orbit { stroke: #35607f; opacity: .55; }
+.landing.light .orbit-mark { color: #fff; }

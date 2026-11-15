@@ -110,6 +110,8 @@ Full design: [`Docs/geosar_intelligence_srs_and_implementation_blueprint.md`](Do
 
 **Prerequisites:** Python 3.11+, Node 18+, git. Nothing else to configure.
 
+> New here? Read the step-by-step **[User Guide](USER_GUIDE.md)** (setup, how to use the app, and a manual test checklist).
+
 ## ⚡ Quick start: one file does everything
 
 This repo ships **no data and no pre-built results**. You bring your own NISAR granules; the app is built from them on your machine.
@@ -152,7 +154,7 @@ Besides your own `.h5` files, the app can analyse **any place and date range** s
 
 1. Get a free NASA token: log in at <https://urs.earthdata.nasa.gov> → **Generate Token**, and put it in `services/api/.env` as `EARTHDATA_TOKEN=...` (that file is git-ignored; never commit it).
 2. Start the app (`run.bat` / `./run.sh`) and open the map. Click **＋ New area** in the top bar.
-3. Choose the place: **search** a name (e.g. "Guwahati"), **Draw on map** (drag a rectangle, or just click), **Use my location** (GPS), or type coordinates. Pick the dates and press **Start analysis**.
+3. Choose the place: **search** a name (e.g. "Guwahati"), **Draw on map** (drag a rectangle, or just click), **Use my location** (GPS), or type coordinates. Pick a date range, press **Find available passes** (a quick NASA catalogue search, nothing is downloaded) and tick the dates you want, then press **Start analysis**. If several satellite tracks cover the place, choose one (only passes from the same track can be compared); the last ticked date is used as the dry reference.
 4. A progress bar with a time-left countdown runs; **Stop** cancels safely. When it finishes, the new area is added to the list and selected.
 
 Limits: each side under 0.6° (about 65 km), up to 400 days, one analysis at a time. NISAR does not image every place every 12 days, so some areas or periods have few or no passes (the app tells you). Expect roughly 3 minutes per satellite pass. Streamed windows are cached under `DATA/_stream/` (or `GEOSAR_DATA_DIR`), results go to `GEOSAR_DATA_STORE`. This only works on your own machine: a hosted server never exposes it (`GEOSAR_ENABLE_ANALYZE=0` also switches it off).
