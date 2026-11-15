@@ -1,6 +1,7 @@
 "use client";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef } from "react";
+import { isWebglAvailable } from "@/lib/webgl.js";
 const SAT = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const W = 77.99024;
 const S = 19.9922;
@@ -36,16 +37,22 @@ function MiniMap({
   const mapRef = useRef(null);
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
-    const map = new maplibregl.Map({
-      container: ref.current,
-      style: style(),
-      center: [(W + E) / 2, (S + N) / 2],
-      zoom: 9.15,
-      pitch: 38,
-      bearing,
-      attributionControl: { compact: true },
-      dragRotate: true
-    });
+    if (!isWebglAvailable()) return; // no WebGL: leave the decorative map blank, don't crash the page
+    let map;
+    try {
+      map = new maplibregl.Map({
+        container: ref.current,
+        style: style(),
+        center: [(W + E) / 2, (S + N) / 2],
+        zoom: 9.15,
+        pitch: 38,
+        bearing,
+        attributionControl: { compact: true },
+        dragRotate: true
+      });
+    } catch {
+      return;
+    }
     map.scrollZoom.disable();
     mapRef.current = map;
     map.on("load", () => {
