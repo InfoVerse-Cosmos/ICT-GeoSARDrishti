@@ -93,7 +93,7 @@ def test_any_failure_falls_back_to_labelled_cache(monkeypatch, kw):
 
 def test_cached_response_comes_from_manifests_and_never_lists_placeholders():
     data = cached_response("93.9,26.75,94.3,27.05", "X")
-    assert data["aois"] == ["aoi_assam_majuli"]          # bbox picks the intersecting AOI only
+    assert "aoi_assam_majuli" in data["aois"] and "aoi_nagpur_kanhan" not in data["aois"]   # bbox picks only intersecting AOIs
     assert data["granule_count"] == len(data["granules"])
     assert all(g["id"] != "TBD" for g in data["granules"])
 

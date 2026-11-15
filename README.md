@@ -142,9 +142,20 @@ Created automatically from `.env.example` on first run. Everything is optional.
 | `LLM_API_KEY` | OpenAI key for the optional plain-language wording on the Evidence Card (uses `gpt-4o-mini`, cheap). Blank = the built-in physics template is used. |
 | `GEOSAR_DATA_DIR` | Where your `.h5` granules are (default `./DATA`). |
 | `GEOSAR_DATA_STORE` | Where analysed results are written (default `services/api/data_store`). |
-| `EARTHDATA_TOKEN` | Enables the live NASA CMR check button (optional). |
+| `EARTHDATA_TOKEN` | NASA Earthdata token: enables **＋ New area** (stream any place from NASA) and the live CMR check. Optional; keep it only in this git-ignored file. |
 
 **Evidence Card, honest by design.** The card first appears instantly from a deterministic physics template. If an OpenAI key is set, the AI re-words it a few seconds later; any number the AI writes that is not in the computed card is rejected, and the card says which engine wrote it. If the AI is unavailable (no key, no internet, rate limit) the built-in template stays: same numbers, nothing breaks.
+
+## Analyse any area from NASA, no big downloads (optional)
+
+Besides your own `.h5` files, the app can analyse **any place and date range** straight from NASA Earthdata Cloud. It reads only the window you ask for (about 90 MB per satellite pass instead of a ~7 GB file) and builds the same analysis.
+
+1. Get a free NASA token: log in at <https://urs.earthdata.nasa.gov> → **Generate Token**, and put it in `services/api/.env` as `EARTHDATA_TOKEN=...` (that file is git-ignored; never commit it).
+2. Start the app (`run.bat` / `./run.sh`) and open the map. Click **＋ New area** in the top bar.
+3. Choose the place: **search** a name (e.g. "Guwahati"), **Draw on map** (drag a rectangle, or just click), **Use my location** (GPS), or type coordinates. Pick the dates and press **Start analysis**.
+4. A progress bar with a time-left countdown runs; **Stop** cancels safely. When it finishes, the new area is added to the list and selected.
+
+Limits: each side under 0.6° (about 65 km), up to 400 days, one analysis at a time. NISAR does not image every place every 12 days, so some areas or periods have few or no passes (the app tells you). Expect roughly 3 minutes per satellite pass. Streamed windows are cached under `DATA/_stream/` (or `GEOSAR_DATA_DIR`), results go to `GEOSAR_DATA_STORE`. This only works on your own machine: a hosted server never exposes it (`GEOSAR_ENABLE_ANALYZE=0` also switches it off).
 
 ## Run each tier manually (developers)
 ```bash

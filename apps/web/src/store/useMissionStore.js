@@ -53,6 +53,18 @@ export const useMissionStore = create((set) => ({
   layerOpacity: 0.85,
   evidenceLoading: false,
   aois: [],
+  pickMode: false, // "Pick on map" for Analyse-a-new-area: next map click chooses the centre
+  pickedPoint: null, // [lon, lat]
+  analyzeBox: null, // [w, s, e, n] preview rectangle drawn on the map
+  analyzeOpen: false,
+  setPickMode: (pickMode) => set({ pickMode }),
+  pickedBox: null, // [w, s, e, n] drawn by dragging on the map
+  setPickedPoint: (pickedPoint) => set({ pickedPoint, pickedBox: null }),
+  setPickedBox: (pickedBox) => set({ pickedBox, pickedPoint: null }),
+  setAnalyzeBox: (analyzeBox) => set({ analyzeBox }),
+  setAnalyzeOpen: (analyzeOpen) => set({ analyzeOpen }),
+  mapBounds: null, // [w, s, e, n] of the current map view (used by "Analyse a new area")
+  setMapBounds: (mapBounds) => set({ mapBounds }),
   audienceMode: INITIAL_AUDIENCE, // simple | scientific
   activeAoiId: "", // set from the AOI list the API actually serves (never a hardcoded area)
   timeline: [],
