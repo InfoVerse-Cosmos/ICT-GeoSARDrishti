@@ -11,8 +11,11 @@
 
 # 🛰️ Live Demo: _TBD — paste hosted URL here before the 2:00 PM, 15 Nov 2026 code freeze_
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-ICT--GeoSARDrishti-181717?logo=github&logoColor=white)](https://github.com/InfoVerse-Cosmos/ICT-GeoSARDrishti)
+
 > Frontend (GitHub Pages / Vercel / Netlify): `https://…`
 > Backend API health check: `https://…/api/v1/health`
+> Source code: <https://github.com/InfoVerse-Cosmos/ICT-GeoSARDrishti>
 
 ---
 
