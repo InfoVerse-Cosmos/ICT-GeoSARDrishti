@@ -46,14 +46,14 @@ export default function LandingPage() {
 
     <section id="radar" className="radar-section" aria-labelledby="radar-title">
       <div className="page-container">
-        <div className="editorial-heading"><div><span className="section-kicker">OBSERVING CHANGE / JULY 2022 EXAMPLE</span><h2 id="radar-title">The story between two images.</h2></div><a href="#start" className="editorial-link">Explore current study areas <Arrow /></a></div>
-        <p className="section-intro">Radar measures echoes from the ground. Calm open water often looks dark. Compare two visits to see where that water-like signal has grown.</p>
+        <div className="editorial-heading"><div><span className="section-kicker">OBSERVING CHANGE / NISAR · GANDAK RIVER · SEPT 2026</span><h2 id="radar-title">The story between two images.</h2></div><a href="#start" className="editorial-link">Explore current study areas <Arrow /></a></div>
+        <p className="section-intro">Radar measures echoes from the ground. Calm open water looks dark; water trapped under vegetation bounces the signal back brighter. Compare two NISAR visits to see how the water-like signal shifts across the monsoon.</p>
         <div className="radar-grid">{[
-          ['01 / BEFORE', '/preview/backscatter_before.png', '7 July 2022', 'An earlier radar view of the landscape.'],
-          ['02 / AFTER', '/preview/backscatter_after.png', '19 July 2022', 'A later acquisition during the monsoon.'],
-          ['03 / THE CHANGE', '/preview/new_water.png', 'Where water may have spread', 'Orange highlights the radar-derived new-water indication.'],
+          ['01 / BEFORE', '/preview/backscatter_before.png', '4 Sept 2026', 'An earlier NISAR L-band radar visit over the Gandak.'],
+          ['02 / AFTER', '/preview/backscatter_after.png', '28 Sept 2026', 'A later visit during the monsoon, one day from the NASA MODIS view.'],
+          ['03 / THE CHANGE', '/preview/new_water.png', 'Where the water signal shifted', 'Cyan marks newly open water; orange marks new water under vegetation that L-band reveals.'],
         ].map(([tag, image, title, description]) => <figure key={tag}><div className="radar-image"><img src={image} alt={description} loading="lazy" /><span className="section-kicker">{tag}</span></div><figcaption><h3>{title}</h3><p>{description}</p></figcaption></figure>)}</div>
-        <p className="data-caption">Reference imagery: OPERA RTC-S1 / Sentinel-1, Nagpur–Vidarbha, July 2022, reproduced from the reference project. This example is separate from the command center’s NISAR observation packs.</p>
+        <p className="data-caption">NASA–ISRO NISAR L2 GCOV (γ⁰ HH), track 149 descending, Gandak River (Bihar–Nepal), 4 &amp; 28 Sept 2026 — composited from frames 074/075/076 and processed by this project. A radar-derived surface/canopy-water indication for inspection, not a confirmed flood: between these visits open water receded while water under vegetation spread.</p>
       </div>
     </section>
 
