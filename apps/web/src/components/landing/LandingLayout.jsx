@@ -46,7 +46,7 @@ export default function LandingLayout() {
           </div>}
         </div>
         <a href="#/" className="agency-wordmark" aria-label="GeoSAR Drishti home"><span className="orbit-mark" aria-hidden="true">G<span /></span><span>GeoSAR<span className="wordmark-subtitle">DRISHTI</span></span></a>
-        <div className="agency-nav-actions"><a href="#about-sar" className="nav-science">Mission &amp; Science</a><ThemeToggle /><a href="#start" className="nav-launch">Launch map <span className="arrow-disc" aria-hidden="true">↗</span></a></div>
+        <div className="agency-nav-actions"><a href="#about-sar" className="nav-science">Mission &amp; Science</a><ThemeToggle /><a href="#/explore" className="nav-launch">Launch map <span className="arrow-disc" aria-hidden="true">↗</span></a></div>
       </nav>
       <nav className="topic-nav" aria-label="Page sections"><a href="#start">Explore Earth</a><a href="#radar">Radar imagery</a><a href="#about-sar">Our science</a><a href="#field-guide">Learning resources</a><a href="#team">Our team</a><span>NASA SPACE APPS 2026 · INDEPENDENT PROJECT</span></nav>
     </header>

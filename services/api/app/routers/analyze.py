@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from ..config import DATA_STORE, REPO_ROOT, get_settings
 from ..envelope import envelope
+from ..services import nisar_passes
 
 router = APIRouter(tags=["analyze"])
 
@@ -73,6 +74,8 @@ class AnalyzeRequest(BaseModel):
     start: str
     end: str
     name: str | None = None
+    track_frame: str | None = None      # chosen from /analyze/passes (same-track passes only)
+    dates: list[str] | None = None      # the passes the user ticked (at least 2)
 
 
 def _validate(req: AnalyzeRequest) -> str | None:
@@ -91,6 +94,19 @@ def _validate(req: AnalyzeRequest) -> str | None:
         return "dates must be YYYY-MM-DD"
     if d1 < d0 or (d1 - d0).days > MAX_DAYS:
         return f"date range must be 0-{MAX_DAYS} days with end after start"
+    if req.track_frame is not None and not re.match(r"^\d{3}/\d{3}$", req.track_frame):
+        return "track_frame must look like 040/015"
+    if req.dates is not None:
+        try:
+            ds = sorted({date.fromisoformat(x) for x in req.dates})
+        except ValueError:
+            return "dates must be YYYY-MM-DD"
+        if len(ds) < 2:
+            return "Choose at least 2 passes (a comparison needs two dates)."
+        if len(ds) > 60:
+            return "Too many passes selected (max 60)."
+        if ds[0] < d0 or ds[-1] > d1:
+            return "Selected passes must lie inside the chosen date range."
     if req.name and (len(req.name) > 80 or not re.match(r"^[\w .,'()/&-]+$", req.name)):
         return "name may only contain letters, numbers and simple punctuation (max 80 chars)"
     return None
@@ -196,6 +212,28 @@ def geocode(q: str = "") -> dict:
     return envelope({"results": results}, warning=None if results else "No place found. Try a bigger nearby town or river.")
 
 
+class PassesRequest(BaseModel):
+    bbox: list[float]
+    start: str
+    end: str
+
+
+@router.post("/analyze/passes")
+def passes(req: PassesRequest) -> dict:
+    """List the NISAR passes NASA has over this area and period, so the user can choose which dates to fetch."""
+    problem = _validate(AnalyzeRequest(bbox=req.bbox, start=req.start, end=req.end))
+    if problem:
+        return envelope(None, status="invalid_request", fallback_active=True, warning=problem)
+    try:
+        found = nisar_passes.find_passes(req.bbox, req.start, req.end, timeout=max(get_settings().external_timeout_seconds, 15.0))
+    except Exception as exc:  # noqa: BLE001 - offline / CMR busy
+        return envelope(None, status="catalogue_unavailable", fallback_active=True,
+                        warning=f"Could not reach the NASA catalogue ({type(exc).__name__}). Check the internet and try again.")
+    if not found["groups"]:
+        return envelope(found, warning="NASA has no NISAR GCOV pass over this area in this period. Try a wider date range or another area.")
+    return envelope(found)
+
+
 @router.get("/analyze")
 def capabilities() -> dict:
     cur = _running()
@@ -233,6 +271,10 @@ def start(req: AnalyzeRequest) -> dict:
            "--aoi-id", aoi_id, "--data-store", str(DATA_STORE), "--with-regimes", "--with-osm"]
     if req.name:
         cmd += ["--name", req.name]
+    if req.track_frame:
+        cmd += ["--track-frame", req.track_frame]
+    if req.dates:
+        cmd += ["--only-dates", ",".join(sorted(set(req.dates)))]
     env = {**__import__("os").environ, "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8"}
     fh = open(log, "w", encoding="utf-8")
     proc = subprocess.Popen(cmd, cwd=str(REPO_ROOT), stdout=fh, stderr=subprocess.STDOUT, env=env,

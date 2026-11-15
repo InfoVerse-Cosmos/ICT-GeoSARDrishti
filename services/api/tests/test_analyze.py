@@ -133,3 +133,63 @@ def test_disabled_when_the_pipeline_is_absent_or_switched_off(client, monkeypatc
     monkeypatch.delenv("GEOSAR_ENABLE_ANALYZE")
     monkeypatch.setattr(analyze, "REPO_ROOT", analyze.REPO_ROOT / "does_not_exist")
     assert analyze._enabled() is False
+
+
+# ---------------------------------------------------------------- choose which passes to fetch
+def test_nisar_passes_groups_by_track_and_recommends_the_longest(monkeypatch):
+    from app.services import nisar_passes
+
+    def entry(track, frame, day, coll_name="NISAR_L2_PR_GCOV_%s_%s_A_%s_4005_DHDH_A_2026%s T230529_2026%s T230603_P05023_N_F_J_001"):
+        return {"producer_granule_id": f"NISAR_L2_PR_GCOV_025_{track}_A_{frame}_4005_DHDH_A_2026{day}T230529_2026{day}T230603_P05023_N_F_J_001.h5"}
+
+    feeds = {
+        "NISAR_L2_GCOV_PROVISIONAL_V1": [entry("040", "015", "0710"), entry("040", "015", "0722"), entry("156", "012", "0707")],
+        "NISAR_L2_GCOV_V1": [entry("040", "015", "1107"), entry("040", "015", "1107")],     # duplicate date is de-duplicated
+    }
+
+    class R:
+        def __init__(self, short): self.short = short
+        def raise_for_status(self): pass
+        def json(self): return {"feed": {"entry": feeds[self.short]}}
+
+    monkeypatch.setattr(nisar_passes.httpx, "get", lambda url, params, timeout: R(params["short_name"]))
+    out = nisar_passes.find_passes([93.9, 26.75, 94.3, 27.05], "2026-07-01", "2026-11-30")
+    assert out["recommended"] == "040/015"
+    g = out["groups"][0]
+    assert [p["date"] for p in g["passes"]] == ["2026-07-10", "2026-07-22", "2026-11-07"]
+    assert [p["maturity"] for p in g["passes"]] == ["PROVISIONAL", "PROVISIONAL", "VALIDATED"]
+    assert out["groups"][1]["track_frame"] == "156/012"
+
+
+def test_passes_endpoint_validates_and_degrades_gracefully(client, monkeypatch):
+    from app.routers import analyze as a
+    bad = client.post("/api/v1/analyze/passes", json={"bbox": [90, 26, 95, 27], "start": "2026-07-01", "end": "2026-07-20"}).json()
+    assert bad["status"] == "invalid_request"
+    monkeypatch.setattr(a.nisar_passes, "find_passes", lambda *x, **k: (_ for _ in ()).throw(a.httpx.ConnectError("offline")))
+    down = client.post("/api/v1/analyze/passes", json=GOOD).json()
+    assert down["status"] == "catalogue_unavailable" and "internet" in down["warning"]
+    monkeypatch.setattr(a.nisar_passes, "find_passes", lambda *x, **k: {"groups": [], "recommended": None})
+    none = client.post("/api/v1/analyze/passes", json=GOOD).json()
+    assert "no NISAR" in none["warning"].lower() or "no nisar" in none["warning"].lower()
+
+
+def test_start_passes_the_chosen_track_and_dates_to_the_pipeline(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(analyze, "_token_configured", lambda: True)
+    monkeypatch.setattr(analyze, "JOB_DIR", tmp_path)
+    started = []
+
+    class FakeProc:
+        def poll(self): return None
+
+    monkeypatch.setattr(analyze.subprocess, "Popen", lambda cmd, **kw: started.append(cmd) or FakeProc())
+    analyze.JOBS.clear()
+    body = _post(client, track_frame="040/015", dates=["2026-07-22", "2026-07-10"])
+    assert body["status"] == "started"
+    cmd = started[0]
+    assert cmd[cmd.index("--track-frame") + 1] == "040/015"
+    assert cmd[cmd.index("--only-dates") + 1] == "2026-07-10,2026-07-22"          # sorted, unique
+    analyze.JOBS.clear()
+    for over, text in [(dict(dates=["2026-07-10"]), "at least 2"), (dict(dates=["2026-07-10", "2026-12-25"]), "inside the chosen"),
+                       (dict(dates=["x", "y"]), "YYYY-MM-DD"), (dict(track_frame="40-15"), "track_frame")]:
+        r = _post(client, **over)
+        assert r["status"] == "invalid_request" and text in r["warning"], (over, r)

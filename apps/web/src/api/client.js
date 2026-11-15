@@ -78,6 +78,7 @@ export const api = {
   exposure: (aoiId) => forAoi(aoiId, () => request(`/aois/${aoiId}/exposure`)),
   provenance: (aoiId) => forAoi(aoiId, () => request(`/aois/${aoiId}/provenance`)),
   geocode: (q) => request(`/geocode?q=${encodeURIComponent(q)}`, { timeoutMs: 8000, retries: 0 }),
+  analyzePasses: (payload) => request("/analyze/passes", { method: "POST", body: payload, timeoutMs: 40000, retries: 0 }),
   analyzeInfo: () => request("/analyze"),
   analyzeStart: (payload) => request("/analyze", { method: "POST", body: payload, timeoutMs: 15000, retries: 0 }),
   analyzeStop: (jobId) => request(`/analyze/${jobId}/stop`, { method: "POST", timeoutMs: 20000, retries: 0 }),

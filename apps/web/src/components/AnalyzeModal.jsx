@@ -38,6 +38,11 @@ export default function AnalyzeModal({ open, onClose }) {
   const [places, setPlaces] = useState(null);
   const [searching, setSearching] = useState(false);
   const timer = useRef(null);
+  const [found, setFound] = useState(null); // { groups: [{track_frame, passes:[{date, maturity}]}], recommended }
+  const [tf, setTf] = useState(null);
+  const [picked, setPicked] = useState([]);
+  const [finding, setFinding] = useState(false);
+  const question = useRef(0); // bumps whenever area/dates change, so a late reply for an old question is ignored
   const keepNote = useRef(false); // GPS / search set their own note; do not overwrite it with the generic one
 
   useEffect(() => {
@@ -67,6 +72,9 @@ export default function AnalyzeModal({ open, onClose }) {
     const km = ((e - w) * 111 * Math.cos(((s + n) / 2) * Math.PI / 180)).toFixed(0);
     setNote(`Area drawn on the map (about ${km} x ${((n - s) * 111).toFixed(0)} km). Drag again to redraw.`);
   }, [pickedBox]);
+
+  // The list of passes belongs to one (area, dates) question: forget it when either changes.
+  useEffect(() => { question.current += 1; setFound(null); setTf(null); setPicked([]); }, [box.w, box.s, box.e, box.n, start, end]);
 
   // Live preview rectangle on the map while the dialog is open.
   useEffect(() => {
@@ -161,11 +169,35 @@ export default function AnalyzeModal({ open, onClose }) {
     if (res.data) { setJob(res.data); setEta(null); }
   };
 
+  const findPasses = async () => {
+    setError(null);
+    const bbox = [box.w, box.s, box.e, box.n].map(Number);
+    if (bbox.some((v) => !Number.isFinite(v)) || box.w === "") return setError("Choose the area first: search, draw on the map, use your location, or type coordinates.");
+    setFinding(true);
+    const asked = question.current;
+    const res = await api.analyzePasses({ bbox, start, end });
+    setFinding(false);
+    if (asked !== question.current) return; // area or dates changed while searching
+    if (!res.data || !res.data.groups?.length) return setError(res.warning || "No passes found.");
+    setFound(res.data);
+    setTf(res.data.recommended);
+    setPicked(res.data.groups.find((g) => g.track_frame === res.data.recommended).passes.map((p) => p.date));
+  };
+
+  const chooseTrack = (t) => {
+    setTf(t);
+    setPicked(found.groups.find((g) => g.track_frame === t).passes.map((p) => p.date));
+  };
+
+  const toggleDate = (d) => setPicked((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort()));
+
   const begin = async () => {
     setError(null);
     const bbox = [box.w, box.s, box.e, box.n].map(Number);
     if (bbox.some((v) => !Number.isFinite(v)) || box.w === "") return setError("Choose the area first: pick it on the map, use your location, or type coordinates.");
-    const res = await api.analyzeStart({ bbox, start, end, name: name.trim() || null });
+    if (!found) return setError("Press Find available passes first, then tick the dates you want.");
+    if (picked.length < 2) return setError("Tick at least 2 passes (a comparison needs two dates).");
+    const res = await api.analyzeStart({ bbox, start, end, name: name.trim() || null, track_frame: tf, dates: picked });
     if (!res.data || ["invalid_request", "no_token", "disabled"].includes(res.status)) return setError(res.warning || "Could not start.");
     setJob(res.data);
     poll(res.data.job_id);
@@ -234,12 +266,43 @@ export default function AnalyzeModal({ open, onClose }) {
               <input aria-label="To date" type="date" disabled={running} value={end} onChange={(ev) => setEnd(ev.target.value)} className="mt-1 w-full rounded border border-grid bg-orbital px-2 py-1 text-sm text-slate-200" />
             </label>
           </div>
-          <p className="text-xs text-slate-500">A longer range gives more satellite passes (one every ~12 days) and a better dry reference, but takes longer (about 3 minutes per pass).</p>
+          <p className="text-xs text-slate-500">Press "Find available passes" to see which dates NASA has; a longer range gives more satellite passes (one every ~12 days) and a better dry reference, but takes longer (about 3 minutes per pass).</p>
+          <button onClick={findPasses} disabled={running || finding} className={`${btn} border-cyan/60 text-cyan`}>{finding ? "Searching NASA…" : "🔍 Find available passes"}</button>
+          {found && (
+            <div className="space-y-2 rounded border border-grid bg-orbital p-2" aria-label="Available passes">
+              {found.groups.length > 1 && (
+                <label className="block text-xs text-slate-400">Satellite track (only passes from one track can be compared)
+                  <select aria-label="Satellite track" value={tf} disabled={running} onChange={(ev) => chooseTrack(ev.target.value)} className="mt-1 w-full rounded border border-grid bg-panel px-2 py-1 text-sm text-slate-200">
+                    {found.groups.map((g) => <option key={g.track_frame} value={g.track_frame}>{g.track_frame}: {g.passes.length} pass{g.passes.length === 1 ? "" : "es"}{g.track_frame === found.recommended ? " (most passes)" : ""}</option>)}
+                  </select>
+                </label>
+              )}
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>{found.groups.find((g) => g.track_frame === tf).passes.length} passes found on track {tf}. Tick the dates to fetch.</span>
+                <span className="space-x-2">
+                  <button type="button" className="text-cyan" disabled={running} onClick={() => setPicked(found.groups.find((g) => g.track_frame === tf).passes.map((p) => p.date))}>all</button>
+                  <button type="button" className="text-cyan" disabled={running} onClick={() => setPicked([])}>none</button>
+                </span>
+              </div>
+              <ul className="grid max-h-36 grid-cols-2 gap-1 overflow-y-auto text-sm">
+                {found.groups.find((g) => g.track_frame === tf).passes.map((p) => (
+                  <li key={p.date}>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" aria-label={`Pass ${p.date}`} disabled={running} checked={picked.includes(p.date)} onChange={() => toggleDate(p.date)} />
+                      <span className="telemetry-mono">{p.date}</span>
+                      <span className={`text-[10px] ${p.maturity === "VALIDATED" ? "text-cyan" : "text-isro"}`}>{p.maturity === "VALIDATED" ? "VALI" : "PROV"}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-slate-300">{picked.length} selected, about {Math.max(1, Math.round((Math.ceil(picked.length / 3) * 360 + 150) / 60))} minutes. The <strong>last</strong> selected date is used as the dry reference, so include a late-season date for better "water under plants" results.</p>
+            </div>
+          )}
           <label className="block text-xs text-slate-400">Name (optional)
             <input aria-label="Area name" type="text" disabled={running} value={name} onChange={(ev) => setName(ev.target.value)} maxLength={80} placeholder="e.g. Brahmaputra bend" className="mt-1 w-full rounded border border-grid bg-orbital px-2 py-1 text-sm text-slate-200" />
           </label>
           {error && <p role="alert" className="rounded border border-alert/50 bg-alert/10 p-2 text-alert">{error}</p>}
-          <button onClick={begin} disabled={running || (info && (info.enabled === false || !info.token_configured))} className="rounded bg-nasa px-4 py-2 font-semibold text-white hover:bg-nasa/80 disabled:opacity-50">{running ? "Analysing…" : "Start analysis"}</button>
+          <button onClick={begin} disabled={running || !found || picked.length < 2 || (info && (info.enabled === false || !info.token_configured))} className="rounded bg-nasa px-4 py-2 font-semibold text-white hover:bg-nasa/80 disabled:opacity-50">{running ? "Analysing…" : "Start analysis"}</button>
         </div>
 
         {job && (
