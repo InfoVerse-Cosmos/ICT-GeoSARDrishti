@@ -3,11 +3,11 @@ import { useMissionStore } from '@/store/useMissionStore.js';
 
 const TEAM = [
   ['Pravin Tawade', 'Team lead · Mission architecture'],
-  ['Kaushik Zade', 'Backend · Data connectors'],
-  ['Sharv Dalal', 'Interface · Map experience'],
   ['Himanshu Sharma', 'NISAR data · Validation'],
+  ['Sharv Dalal', 'Interface · Map experience'],
   ['Sakshi Manav Tayade', 'Water regimes · Regional context'],
   ['Prashan Arya', 'Evidence cards · Quality assurance'],
+  ['Kaushik Zade', 'Backend · Data connectors'],
 ];
 
 function Arrow() { return <span className="arrow-disc" aria-hidden="true">↗</span>; }

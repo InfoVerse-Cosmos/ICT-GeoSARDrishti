@@ -87,6 +87,8 @@ export const useMissionStore = create((set) => ({
 
   setLayerOpacity: (layerOpacity) => set({ layerOpacity }),
   setEvidenceLoading: (evidenceLoading) => set({ evidenceLoading }),
+  narrating: false, // the AI wording for the clicked spot is still being written
+  setNarrating: (narrating) => set({ narrating }),
   // Only areas the backend really has data for are listed; keep the selection valid.
   setAois: (aois) =>
     set((s) => ({

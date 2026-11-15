@@ -5,7 +5,7 @@ import { PLAIN_LAYER_HINT, SIMPLE_CAVEAT, plainClickSummary, plainLayerLabel } f
 // "what you're looking at" guide, a one-click report button, and a plain-language
 // result for the clicked spot — no dB, thresholds, granules or polarization.
 export default function SimplePanel({ onOpenReport }) {
-  const { activeLayer, clickedPixel, timeline } = useMissionStore();
+  const { activeLayer, clickedPixel, timeline, evidenceCard, narrating } = useMissionStore();
   const summary = plainClickSummary(clickedPixel);
   const hasData = timeline.length > 0;
 
@@ -48,6 +48,14 @@ export default function SimplePanel({ onOpenReport }) {
                 {clickedPixel.lat.toFixed(4)}°, {clickedPixel.lon.toFixed(4)}°
               </p>
             )}
+            {evidenceCard?.narration ? (
+              <p className="mt-2 border-t border-grid pt-2 text-[13px] text-slate-200" data-testid="ai-explanation">
+                {evidenceCard.narration}
+                <span className="mt-1 block text-[10px] italic text-slate-500">Plain-words explanation written by AI ({evidenceCard.narration_model || "LLM"}) from the radar numbers.</span>
+              </p>
+            ) : narrating ? (
+              <p className="mt-2 border-t border-grid pt-2 text-[12px] italic text-slate-400" role="status">Writing a plain explanation…</p>
+            ) : null}
           </div>
         )}
       </section>

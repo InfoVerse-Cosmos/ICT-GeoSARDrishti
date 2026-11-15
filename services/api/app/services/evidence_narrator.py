@@ -25,7 +25,7 @@ _SYSTEM_PROMPT = (
     "Rewrite the JSON evidence card as 3-4 short plain sentences. Use ONLY facts and numbers present in "
     "the JSON; never invent, round differently, or add any value, place, date or cause. Never claim a "
     "confirmed flood, water depth or damage. End with the card's caveat meaning: this is a radar-derived "
-    "indication for field inspection, not a confirmed measurement. No markdown, no bullet points."
+    "indication for field inspection, not a confirmed measurement. Prefer everyday words; mention technical terms (dB, HH, double-bounce) only when essential. No markdown, no bullet points."
 )
 
 
