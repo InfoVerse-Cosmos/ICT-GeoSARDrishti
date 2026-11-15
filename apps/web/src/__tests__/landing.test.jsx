@@ -80,3 +80,40 @@ describe('landing experience selection', () => {
     }
   });
 });
+
+describe('landing case studies and walkthrough', () => {
+  it('opens a browser-viewable PDF in a new tab and keeps the PowerPoint download separate', () => {
+    render(<LandingLayout />);
+    const preview = screen.getByRole('link', { name: 'Open GeoSAR Drishti presentation preview in a new tab' });
+    expect(preview.getAttribute('href')).toBe('/preview/GeoSAR_Drishti_Judging_Presentation.pdf');
+    expect(preview.getAttribute('target')).toBe('_blank');
+    expect(preview.hasAttribute('download')).toBe(false);
+    expect(screen.getByRole('link', { name: 'Download PowerPoint' }).hasAttribute('download')).toBe(true);
+  });
+
+  it('shows all six supplied Assam images with links to their full resolution', () => {
+    render(<LandingLayout />);
+    for (let number = 1; number <= 6; number++) {
+      const image = document.querySelector(`img[src="/images/projectdemo${number}.jpeg"]`);
+      expect(image).toBeTruthy();
+      expect(image.closest('a').getAttribute('href')).toBe(`/images/projectdemo${number}.jpeg`);
+    }
+    expect(screen.getByText(/external reference case/)).toBeTruthy();
+  });
+
+  it('maximizes the YouTube walkthrough and restores focus when closed', () => {
+    render(<LandingLayout />);
+    const dialog = document.querySelector('dialog');
+    const showModal = dialog.showModal = vi.fn(() => dialog.setAttribute('open', ''));
+    const close = dialog.close = vi.fn(() => { dialog.removeAttribute('open'); dialog.dispatchEvent(new Event('close')); });
+    const trigger = screen.getByRole('button', { name: 'Maximize video' });
+    fireEvent.click(trigger);
+    expect(showModal).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: /Close video/ }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(trigger);
+    const frame = document.querySelector('.project-media-grid iframe');
+    expect(frame.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/mqZ5vd-t40s');
+    expect(frame.hasAttribute('allowfullscreen')).toBe(true);
+  });
+});
