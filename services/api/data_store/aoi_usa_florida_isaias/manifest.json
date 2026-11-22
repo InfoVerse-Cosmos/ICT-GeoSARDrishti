@@ -1,0 +1,284 @@
+{
+  "aoi_id": "aoi_usa_florida_isaias",
+  "bounds": [
+    -87.1,
+    30.45,
+    -86.55,
+    30.9
+  ],
+  "default_zoom": 8,
+  "acquisition_gaps": [
+    "2026-07-27/2026-08-10"
+  ],
+  "timeline": [
+    {
+      "date": "2026-08-13",
+      "granule_id": "NISAR_L2_PR_GCOV_028_004_A_017_4005_DHDH_A_20260813T111044_20260813T111118_P05023_N_F_J_001",
+      "track_frame": "004/017",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 0.03,
+        "flooded_veg_km2": 0.3,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 156.58,
+        "valid_pixel_pct": 5.9,
+        "aoi_coverage_pct": 87.3,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-09-06",
+      "granule_id": "NISAR_L2_PR_GCOV_030_004_A_017_4005_DHDH_A_20260906T111043_20260906T111118_P05023_N_F_J_001",
+      "track_frame": "004/017",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 9.61,
+        "flooded_veg_km2": 4.77,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 142.46,
+        "valid_pixel_pct": 5.9,
+        "aoi_coverage_pct": 87.3,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-09-18",
+      "granule_id": "NISAR_L2_PR_GCOV_031_004_A_017_4005_DHDH_A_20260918T111043_20260918T111118_P05023_F_F_J_001",
+      "track_frame": "004/017",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 0.0,
+        "flooded_veg_km2": 0.73,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 156.01,
+        "valid_pixel_pct": 5.9,
+        "aoi_coverage_pct": 87.3,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-09-30",
+      "granule_id": "NISAR_L2_PR_GCOV_032_004_A_017_4005_DHDH_A_20260930T111043_20260930T111118_P05023_N_F_J_001",
+      "track_frame": "004/017",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 0.02,
+        "flooded_veg_km2": 0.16,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 156.65,
+        "valid_pixel_pct": 5.9,
+        "aoi_coverage_pct": 87.3,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-10-12",
+      "granule_id": "NISAR_L2_PR_GCOV_033_004_A_017_4005_DHDH_A_20261012T111043_20261012T111118_P05023_N_F_J_001",
+      "track_frame": "004/017",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 12.94,
+        "flooded_veg_km2": 0.87,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 143.21,
+        "valid_pixel_pct": 6.0,
+        "aoi_coverage_pct": 87.3,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-10-24",
+      "granule_id": "NISAR_L2_PR_GCOV_034_004_A_017_4005_DHDH_A_20261024T111044_20261024T111118_P05036_N_F_J_001",
+      "track_frame": "004/017",
+      "polarization": "HH+HV",
+      "maturity": "VALIDATED",
+      "crid": "P05036",
+      "metrics": {
+        "open_water_km2": 0.06,
+        "flooded_veg_km2": 0.09,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 156.77,
+        "valid_pixel_pct": 5.9,
+        "aoi_coverage_pct": 87.3,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-11-17",
+      "granule_id": "NISAR_L2_PR_GCOV_036_004_A_017_4005_DHDH_A_20261117T111045_20261117T111119_P05036_N_F_J_001",
+      "track_frame": "004/017",
+      "polarization": "HH+HV",
+      "maturity": "VALIDATED",
+      "crid": "P05036",
+      "metrics": {
+        "open_water_km2": 0.0,
+        "flooded_veg_km2": 0.0,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 157.03,
+        "valid_pixel_pct": 6.0,
+        "aoi_coverage_pct": 87.3,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": true
+      }
+    }
+  ],
+  "provenance": {
+    "granules": [
+      "NISAR_L2_PR_GCOV_028_004_A_017_4005_DHDH_A_20260813T111044_20260813T111118_P05023_N_F_J_001",
+      "NISAR_L2_PR_GCOV_030_004_A_017_4005_DHDH_A_20260906T111043_20260906T111118_P05023_N_F_J_001",
+      "NISAR_L2_PR_GCOV_031_004_A_017_4005_DHDH_A_20260918T111043_20260918T111118_P05023_F_F_J_001",
+      "NISAR_L2_PR_GCOV_032_004_A_017_4005_DHDH_A_20260930T111043_20260930T111118_P05023_N_F_J_001",
+      "NISAR_L2_PR_GCOV_033_004_A_017_4005_DHDH_A_20261012T111043_20261012T111118_P05023_N_F_J_001",
+      "NISAR_L2_PR_GCOV_034_004_A_017_4005_DHDH_A_20261024T111044_20261024T111118_P05036_N_F_J_001",
+      "NISAR_L2_PR_GCOV_036_004_A_017_4005_DHDH_A_20261117T111045_20261117T111119_P05036_N_F_J_001"
+    ],
+    "otsu_thresholds": {
+      "2026-08-13": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-09-06": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-09-18": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-09-30": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-10-12": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-10-24": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-11-17": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      }
+    },
+    "delta_hh_params": {
+      "min_delta_hh_db": 3.0,
+      "min_delta_ratio_db": 1.5
+    },
+    "reference_date": "2026-11-17",
+    "calibration_check": {
+      "provisional_date": "2026-10-12",
+      "validated_date": "2026-10-24",
+      "channel": "HV",
+      "median_offset_db": -1.02,
+      "stable_pixels": 14315,
+      "within_1db": false
+    },
+    "masks": {
+      "vegetation": "none supplied \u2014 double-bounce test applied to all non-water pixels",
+      "slope": "not applied (no DEM supplied)",
+      "validity": "GCOV mask 0 (not fully focused) / 255 (outside swath), non-finite and \u03b30<=0 excluded"
+    },
+    "threshold_method": "Otsu on the dark tail (HH<-10 dB, HV<-16 dB), capped to HH -22..-16 dB and HV -30..-22 dB so land/sand/wet soil is not called water",
+    "processing": {
+      "generated_at": "2026-11-22T13:17:18Z",
+      "grid_res_m": 100.0,
+      "speckle": "multilook + 3x3 median (linear)",
+      "crs_native": [
+        32616
+      ],
+      "single_pol_mode": false,
+      "pipeline": "scripts/02_subset_and_classify_sar.py",
+      "stage03_at": "2026-11-22T13:17:29Z"
+    },
+    "limitations": [
+      "Radar-derived surface/canopy-water indication for inspection, not confirmed flood depth.",
+      "Hydroperiod expressed as M of N valid NISAR observations, not days flooded.",
+      "Acquisition gap(s) 2026-07-27/2026-08-10 are real (no suitable same-track pass) and shown explicitly, never interpolated."
+    ],
+    "gmm": {
+      "k": 5,
+      "k_wet_gmm": 4,
+      "method": "never-wet pixels = Stable Dry Upland by definition; GMM clusters the ever-wet pixels",
+      "features": [
+        "mean_HH",
+        "min_HH",
+        "max_dHH",
+        "mean_HH-HV",
+        "M_open/N",
+        "M_fveg/N"
+      ],
+      "random_state": 42,
+      "regime_area_km2": {
+        "Permanent River / Deep Channel": 0.0,
+        "Seasonal Open Floodplain / Beel": 7.01,
+        "Seasonally Flooded Canopy / Tall Grassland": 5.44,
+        "Seasonal Paddy-Like Inundation Cycle": 0.0,
+        "Stable Dry Upland / Levee": 144.58
+      },
+      "mapping_rule": "wet<15%\u2192Dry Upland; open-dominant & open\u226590%\u2192Permanent River; open-dominant\u2192Beel; flooded-veg-dominant & cropland\u226550%\u2192Paddy cycle; else\u2192Flooded Canopy"
+    },
+    "exposure": {
+      "candidates": 13,
+      "threshold": 3,
+      "source": "OpenStreetMap via osmnx (live)",
+      "note": "Wet on >= 3 of 7 NISAR observations (settlements: wet pixel within 200 m). Inspection candidates only \u2014 never a damage claim. OSM settlements inside the area: 36, flagged: 0."
+    }
+  },
+  "name": "Florida Panhandle - Escambia/Santa Rosa (Isaias floods)",
+  "track_frame": "004/017",
+  "polarization": "HH+HV",
+  "single_pol_mode": false,
+  "fallback_plan": "A",
+  "reference_date": "2026-11-17",
+  "layers": [
+    "open_water",
+    "flooded_veg",
+    "hydroperiod",
+    "gmm_regimes"
+  ],
+  "synthetic_test_data": false,
+  "grid": {
+    "rows": 501,
+    "cols": 527,
+    "res_m": 100.0,
+    "pixel_area_km2": 0.00999
+  },
+  "season_summary": {
+    "n_dates": 7,
+    "ever_wet_km2": 21.08,
+    "wet_every_observation_km2": 0.0,
+    "max_wet_observations": 5
+  }
+}
