@@ -15,3 +15,7 @@
 - Typography reference: https://www.nasa.gov/nasa-brand-center/brand-guidelines/
 
 GeoSAR Drishti is an independent project. NASA and ISRO do not endorse it.
+
+- NISAR satellite illustration: NASA mission page, https://science.nasa.gov/mission/nisar/ . Local asset: `nisar-satellite.jpg`; official source: https://assets.science.nasa.gov/content/dam/science/missions/nisar/nisar-jpl/images/nisar_in_space.jpeg/jcr:content/renditions/cq5dam.web.1280.1280.jpeg . Illustration, not an observation.
+- Texas storm visualization: NASA Scientific Visualization Studio / GPM, Alex Kekesi and Stephen Lang, https://svs.gsfc.nasa.gov/5569/ . Local asset: `texas-floods.jpg`; source: https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005569/TXflood_HD.jpg . Depicts storm precipitation, not a GeoSAR Drishti flood analysis.
+- Assam project gallery: user-supplied `projectdemo1.jpeg` through `projectdemo6.jpeg`, showing the Brahmaputra Bend workspace. The prior Gandak radar example gallery has been removed from the landing page.

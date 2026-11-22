@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import ExploreGuide, { FieldGuide } from '@/components/landing/ExploreGuide.jsx';
 import { useMissionStore } from '@/store/useMissionStore.js';
 import LandingLayout from '@/components/landing/LandingLayout.jsx';
 
@@ -22,7 +21,7 @@ describe('landing navigation and theme', () => {
     const trigger = screen.getByRole('button', { name: /Explore/ });
     fireEvent.click(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
-    const menuLink = screen.getAllByRole('link', { name: /Start exploring/ })[0];
+    const menuLink = screen.getAllByRole('link', { name: /Radar in action/ })[0];
     menuLink.focus();
     fireEvent.keyDown(menuLink, { key: 'Escape' });
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
@@ -58,36 +57,63 @@ describe('landing experience selection', () => {
   it('opens the workspace directly from the hero in simple mode without a mode-selection step', () => {
     useMissionStore.getState().setAudienceMode('scientific');
     render(<LandingLayout />);
-    const launch = screen.getByRole('link', { name: 'Explore the water story' });
+    const launch = screen.getByRole('link', { name: 'Start exploring' });
     expect(launch.getAttribute('href')).toBe('#/explore');
     fireEvent.click(launch);
     expect(useMissionStore.getState().audienceMode).toBe('simple');
     expect(useMissionStore.getState().basemap).toBe('satellite');
   });
-  it('opens the scientific workspace with the selected area and matching basemap', () => {
-    render(<ExploreGuide />);
-    fireEvent.click(screen.getByRole('button', { name: 'Researchers & analysts' }));
-    fireEvent.change(screen.getByLabelText('Choose a study area'), { target: { value: 'aoi_nagpur_kanhan' } });
-    const launch = screen.getByRole('link', { name: /Open scientific workspace/ });
-    expect(launch.getAttribute('href')).toBe('#/explore');
-    fireEvent.click(launch);
-    expect(useMissionStore.getState().audienceMode).toBe('scientific');
-    expect(useMissionStore.getState().basemap).toBe('dark');
-    expect(useMissionStore.getState().activeAoiId).toBe('aoi_nagpur_kanhan');
+  it('removes the experience selector and field guide without leaving broken section links', () => {
+    render(<LandingLayout />);
+    expect(screen.queryByRole('heading', { name: 'One Earth. Two ways to explore.' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'A little context. A clearer picture.' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Choose your experience' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Explore/ }));
+    const workspaceLinks = screen.getAllByRole('link').filter(link => link.getAttribute('href') === '#/explore');
+    expect(workspaceLinks).toHaveLength(1);
+    expect(workspaceLinks[0].textContent).toContain('Start exploring');
+    for (const link of screen.getAllByRole('link')) {
+      const href = link.getAttribute('href');
+      if (href?.startsWith('#') && !href.startsWith('#/')) {
+        expect(document.getElementById(href.slice(1)), `Missing target for ${href}`).toBeTruthy();
+      }
+    }
+  });
+});
+
+describe('landing case studies and walkthrough', () => {
+  it('opens a browser-viewable PDF in a new tab and keeps the PowerPoint download separate', () => {
+    render(<LandingLayout />);
+    const preview = screen.getByRole('link', { name: 'Open GeoSAR Drishti presentation preview in a new tab' });
+    expect(preview.getAttribute('href')).toBe('/preview/GeoSAR_Drishti_Judging_Presentation.pdf');
+    expect(preview.getAttribute('target')).toBe('_blank');
+    expect(preview.hasAttribute('download')).toBe(false);
+    expect(screen.getByRole('link', { name: 'Download PowerPoint' }).hasAttribute('download')).toBe(true);
   });
 
-  it('lets a returning scientist start in simple mode', () => {
-    useMissionStore.getState().setAudienceMode('scientific');
-    render(<ExploreGuide />);
-    fireEvent.click(screen.getByRole('link', { name: /Explore in simple mode/ }));
-    expect(useMissionStore.getState().audienceMode).toBe('simple');
-    expect(useMissionStore.getState().basemap).toBe('satellite');
-    expect(useMissionStore.getState().activeAoiId).toBe('aoi_assam_majuli');
+  it('shows all six supplied Assam images with links to their full resolution', () => {
+    render(<LandingLayout />);
+    for (let number = 1; number <= 6; number++) {
+      const image = document.querySelector(`img[src="/images/projectdemo${number}.jpeg"]`);
+      expect(image).toBeTruthy();
+      expect(image.closest('a').getAttribute('href')).toBe(`/images/projectdemo${number}.jpeg`);
+    }
+    expect(screen.getByText(/external reference case/)).toBeTruthy();
   });
 
-  it('explains observation frequency without claiming days of flooding', () => {
-    render(<FieldGuide />);
-    expect(screen.getByText(/This does not mean six days of flooding/)).toBeTruthy();
-    expect(screen.getByText(/does not measure flood depth or confirm damage/)).toBeTruthy();
+  it('maximizes the YouTube walkthrough and restores focus when closed', () => {
+    render(<LandingLayout />);
+    const dialog = document.querySelector('dialog');
+    const showModal = dialog.showModal = vi.fn(() => dialog.setAttribute('open', ''));
+    const close = dialog.close = vi.fn(() => { dialog.removeAttribute('open'); dialog.dispatchEvent(new Event('close')); });
+    const trigger = screen.getByRole('button', { name: 'Maximize video' });
+    fireEvent.click(trigger);
+    expect(showModal).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: /Close video/ }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(trigger);
+    const frame = document.querySelector('.project-media-grid iframe');
+    expect(frame.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/mqZ5vd-t40s');
+    expect(frame.hasAttribute('allowfullscreen')).toBe(true);
   });
 });

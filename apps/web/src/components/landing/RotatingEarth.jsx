@@ -189,10 +189,13 @@ export default function RotatingEarth() {
   return <>
     <div className={`earth-globe ${ready ? 'is-ready' : ''}`}>
       <svg className="earth-orbit" viewBox="0 0 100 100" aria-hidden="true">
-        <ellipse cx="50" cy="50" rx="61" ry="23" transform="rotate(-30 50 50)" />
+        <path d="M-11 50 A61 23 0 0 1 111 50" transform="rotate(-30 50 50)" />
       </svg>
       <img src="/images/earth-eastern-hemisphere.jpg" alt="Earth viewed from space" aria-hidden={ready} width="1600" height="900" fetchpriority="high" className="earth-fallback" />
       <canvas ref={canvasRef} role="img" aria-hidden={!ready} aria-label="Three-dimensional Earth visualization using NASA Blue Marble imagery" />
+      <svg className="earth-orbit earth-orbit-front" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M111 50 A61 23 0 0 1 -11 50" transform="rotate(-30 50 50)" />
+      </svg>
       <svg ref={satelliteRef} className="earth-satellite" viewBox="0 0 64 40" aria-hidden="true">
         <g transform="rotate(-15 32 20)">
           <path className="satellite-panels" d="M2 13h19v14H2z M43 13h19v14H43z" />

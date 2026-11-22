@@ -4,11 +4,12 @@ import { ThemeToggle } from './ThemeToggle.jsx';
 import '@/landing.css';
 
 const NAV_LINKS = [
-  ['Start exploring', '#start', 'Choose your experience and study area'],
-  ['Radar in action', '#radar', 'See a before-and-after observation'],
-  ['The science', '#about-sar', 'Understand how radar reveals water'],
-  ['Field guide', '#field-guide', 'Plain-language answers to your questions'],
-  ['Our team', '#team', 'Meet the people behind GeoSAR Drishti'],
+  ['The challenge', '#about-sar', 'Why radar matters for water observation'],
+  ['Our solution', '#solution', 'From radar observations to readable evidence'],
+  ['Presentation & demo', '#video', 'Download the slides and watch the walkthrough'],
+  ['Radar in action', '#radar', 'Explore Assam and a U.S. reference case'],
+  ['Applications', '#applications', 'Research, NGOs and our vision'],
+  ['Our team', '#team', 'Meet InfoVerse Cosmos'],
 ];
 
 export default function LandingLayout() {
@@ -45,15 +46,15 @@ export default function LandingLayout() {
             {NAV_LINKS.map(([label, href, description]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}><strong>{label} <span aria-hidden="true">↗</span></strong><small>{description}</small></a>)}
           </div>}
         </div>
-        <a href="#/" className="agency-wordmark" aria-label="GeoSAR Drishti home"><span className="orbit-mark" aria-hidden="true">G<span /></span><span>GeoSAR<span className="wordmark-subtitle">DRISHTI</span></span></a>
-        <div className="agency-nav-actions"><a href="#about-sar" className="nav-science">Mission &amp; Science</a><ThemeToggle /><a href="#/explore" className="nav-launch">Launch map <span className="arrow-disc" aria-hidden="true">↗</span></a></div>
+        <a href="#/" className="agency-wordmark" aria-label="GeoSAR Drishti home"><img className="agency-logo" src="/images/GeoSAR.jpeg" alt="GeoSAR Drishti — Earth insights through radar vision" width="1600" height="800" /></a>
+        <div className="agency-nav-actions"><a href="#about-sar" className="nav-science">Mission &amp; Science</a><ThemeToggle /></div>
       </nav>
-      <nav className="topic-nav" aria-label="Page sections"><a href="#start">Explore Earth</a><a href="#radar">Radar imagery</a><a href="#about-sar">Our science</a><a href="#field-guide">Learning resources</a><a href="#team">Our team</a><span>NASA SPACE APPS 2026 · INDEPENDENT PROJECT</span></nav>
+      <nav className="topic-nav" aria-label="Page sections">{NAV_LINKS.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<span>NASA SPACE APPS 2026 ? INDEPENDENT PROJECT</span></nav>
     </header>
     <main id="landing-content"><LandingPage /></main>
     <footer className="agency-footer">
       <div className="page-container footer-grid">
-        <div className="footer-intro"><span className="footer-wordmark">GeoSAR Drishti</span><h2>A different perspective.<br />A better understanding.</h2><p>Exploring our changing Earth through radar, open science and accessible tools.</p><a href="#start" className="editorial-link">Begin your exploration <span className="arrow-disc" aria-hidden="true">↗</span></a></div>
+        <div className="footer-intro"><span className="footer-wordmark">GeoSAR Drishti</span><h2>A different perspective.<br />A better understanding.</h2><p>Exploring our changing Earth through radar, open science and accessible tools.</p></div>
         <div><h3>Explore</h3>{NAV_LINKS.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</div>
         <div><h3>Open science</h3><a href="https://www.nasa.gov/" target="_blank" rel="noreferrer">NASA ↗</a><a href="https://nisar.jpl.nasa.gov/" target="_blank" rel="noreferrer">NISAR mission ↗</a><a href="https://www.earthdata.nasa.gov/" target="_blank" rel="noreferrer">NASA Earthdata ↗</a><a href="https://github.com/InfoVerse-Cosmos/ICT-GeoSARDrishti" target="_blank" rel="noreferrer">Project source ↗</a></div>
       </div>
