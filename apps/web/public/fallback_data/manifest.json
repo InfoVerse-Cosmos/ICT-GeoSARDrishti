@@ -1,0 +1,165 @@
+{
+  "_note": "Offline mirror (SRS \u00a77.2 rule 3) of the AOIs analysed on this machine. Generated from the demo packs in services/api/data_store.",
+  "generated_at": "2026-11-22T12:59:55Z",
+  "aois": [
+    {
+      "aoi_id": "aoi_usa_missouri_black_river",
+      "name": "Black River floodplain, Missouri, USA: July 2026 record flood",
+      "bounds": [
+        -90.85,
+        37.2,
+        -90.5,
+        37.5
+      ],
+      "default_zoom": 8,
+      "layers": [
+        "open_water",
+        "flooded_veg",
+        "hydroperiod",
+        "gmm_regimes"
+      ],
+      "polarization": "HH+HV",
+      "track_frame": "084/070",
+      "fallback_plan": "A",
+      "acquisition_gaps": [
+        "2026-07-27/2026-08-10"
+      ],
+      "reference_date": "2026-10-30",
+      "single_pol_mode": false,
+      "synthetic_test_data": false,
+      "season_summary": {
+        "n_dates": 6,
+        "ever_wet_km2": 9.67,
+        "wet_every_observation_km2": 0.01,
+        "max_wet_observations": 6
+      },
+      "timeline": [
+        {
+          "date": "2026-07-02",
+          "granule_id": "NISAR_L2_PR_GCOV_024_084_D_070_4005_DHDH_A_20260702T005158_20260702T005225_P05023_N_F_J_001",
+          "track_frame": "084/070",
+          "polarization": "HH+HV",
+          "maturity": "PROVISIONAL",
+          "crid": "P05023",
+          "metrics": {
+            "open_water_km2": 0.1,
+            "flooded_veg_km2": 1.8,
+            "paddy_like_km2": null,
+            "natural_flooded_veg_km2": null,
+            "dry_km2": 886.36,
+            "valid_pixel_pct": 85.9,
+            "aoi_coverage_pct": 100.0,
+            "otsu_hh_db": -16.0,
+            "otsu_hv_db": -22.0,
+            "is_reference": false
+          }
+        },
+        {
+          "date": "2026-07-14",
+          "granule_id": "NISAR_L2_PR_GCOV_025_084_D_070_4005_DHDH_A_20260714T005157_20260714T005224_P05023_F_F_J_001",
+          "track_frame": "084/070",
+          "polarization": "HH+HV",
+          "maturity": "PROVISIONAL",
+          "crid": "P05023",
+          "metrics": {
+            "open_water_km2": 0.38,
+            "flooded_veg_km2": 3.77,
+            "paddy_like_km2": null,
+            "natural_flooded_veg_km2": null,
+            "dry_km2": 884.11,
+            "valid_pixel_pct": 85.9,
+            "aoi_coverage_pct": 100.0,
+            "otsu_hh_db": -16.0,
+            "otsu_hv_db": -22.0,
+            "is_reference": false
+          }
+        },
+        {
+          "date": "2026-07-26",
+          "granule_id": "NISAR_L2_PR_GCOV_026_084_D_070_4005_DHDH_A_20260726T005157_20260726T005223_P05023_N_P_J_001",
+          "track_frame": "084/070",
+          "polarization": "HH+HV",
+          "maturity": "PROVISIONAL",
+          "crid": "P05023",
+          "metrics": {
+            "open_water_km2": 0.3,
+            "flooded_veg_km2": 2.41,
+            "paddy_like_km2": null,
+            "natural_flooded_veg_km2": null,
+            "dry_km2": 865.81,
+            "valid_pixel_pct": 84.0,
+            "aoi_coverage_pct": 100.0,
+            "otsu_hh_db": -16.0,
+            "otsu_hv_db": -22.0,
+            "is_reference": false
+          }
+        },
+        {
+          "date": "2026-08-19",
+          "granule_id": "NISAR_L2_PR_GCOV_028_084_D_070_4005_DHDH_A_20260819T005156_20260819T005222_P05023_N_P_J_001",
+          "track_frame": "084/070",
+          "polarization": "HH+HV",
+          "maturity": "PROVISIONAL",
+          "crid": "P05023",
+          "metrics": {
+            "open_water_km2": 0.4,
+            "flooded_veg_km2": 1.83,
+            "paddy_like_km2": null,
+            "natural_flooded_veg_km2": null,
+            "dry_km2": 875.43,
+            "valid_pixel_pct": 84.9,
+            "aoi_coverage_pct": 100.0,
+            "otsu_hh_db": -16.0,
+            "otsu_hv_db": -22.0,
+            "is_reference": false
+          }
+        },
+        {
+          "date": "2026-09-24",
+          "granule_id": "NISAR_L2_PR_GCOV_031_084_D_070_4005_DHDH_A_20260924T005155_20260924T005222_P05023_N_F_J_001",
+          "track_frame": "084/070",
+          "polarization": "HH+HV",
+          "maturity": "PROVISIONAL",
+          "crid": "P05023",
+          "metrics": {
+            "open_water_km2": 0.47,
+            "flooded_veg_km2": 1.64,
+            "paddy_like_km2": null,
+            "natural_flooded_veg_km2": null,
+            "dry_km2": 879.45,
+            "valid_pixel_pct": 85.2,
+            "aoi_coverage_pct": 100.0,
+            "otsu_hh_db": -16.0,
+            "otsu_hv_db": -22.0,
+            "is_reference": false
+          }
+        },
+        {
+          "date": "2026-10-30",
+          "granule_id": "NISAR_L2_PR_GCOV_034_084_D_070_4005_DHDH_A_20261030T005156_20261030T005222_P05036_N_P_J_001",
+          "track_frame": "084/070",
+          "polarization": "HH+HV",
+          "maturity": "VALIDATED",
+          "crid": "P05036",
+          "metrics": {
+            "open_water_km2": 1.13,
+            "flooded_veg_km2": 0.0,
+            "paddy_like_km2": null,
+            "natural_flooded_veg_km2": null,
+            "dry_km2": 887.13,
+            "valid_pixel_pct": 85.9,
+            "aoi_coverage_pct": 100.0,
+            "otsu_hh_db": -16.0,
+            "otsu_hv_db": -22.0,
+            "is_reference": true
+          }
+        }
+      ],
+      "limitations": [
+        "Radar-derived surface/canopy-water indication for inspection, not confirmed flood depth.",
+        "Hydroperiod expressed as M of N valid NISAR observations, not days flooded.",
+        "Acquisition gap(s) 2026-07-27/2026-08-10 are real (no suitable same-track pass) and shown explicitly, never interpolated."
+      ]
+    }
+  ]
+}

@@ -23,7 +23,7 @@ def run(store: Path, out: Path = MIRROR) -> dict:
         entry["timeline"] = m.get("timeline", [])
         entry["limitations"] = m.get("provenance", {}).get("limitations", [])
         aois.append(entry)
-    mirror = {"_note": "Offline mirror (SRS §7.2 rule 3) of the AOIs analysed on this machine. Generated, git-ignored.",
+    mirror = {"_note": "Offline mirror (SRS §7.2 rule 3) of the AOIs analysed here. Generated from the packs in services/api/data_store.",
               "generated_at": now_iso(), "aois": aois}
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(mirror, indent=2), encoding="utf-8")
