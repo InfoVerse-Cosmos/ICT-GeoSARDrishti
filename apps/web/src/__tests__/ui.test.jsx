@@ -216,10 +216,15 @@ describe("report audience", () => {
 
 // ------------------------------------------------------------ offline mirror content
 describe("bundled offline mirror (public/fallback_data/manifest.json)", () => {
-  it("contains both AOIs with valid bounds", () => {
+  it("mirrors the analysed AOIs with valid bounds", () => {
     const ids = fallbackManifest.aois.map((a) => a.aoi_id);
-    expect(ids).toEqual(expect.arrayContaining(["aoi_assam_majuli", "aoi_nagpur_kanhan"]));
+    // The mirror ships the committed demo packs (regenerated from services/api/data_store).
+    expect(ids).toEqual(
+      expect.arrayContaining(["aoi_usa_florida_isaias", "aoi_usa_missouri_black_river"]),
+    );
+    expect(new Set(ids).size).toBe(ids.length); // ids are unique
     for (const a of fallbackManifest.aois) {
+      expect(a.aoi_id).toBeTruthy();
       const [w, s, e, n] = a.bounds;
       expect(w).toBeLessThan(e);
       expect(s).toBeLessThan(n);

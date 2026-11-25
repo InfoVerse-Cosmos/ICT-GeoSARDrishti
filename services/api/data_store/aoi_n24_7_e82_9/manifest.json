@@ -1,0 +1,147 @@
+{
+  "aoi_id": "aoi_n24_7_e82_9",
+  "bounds": [
+    81.4623570772245,
+    23.4319123207809,
+    84.4833641155344,
+    26.1579551332563
+  ],
+  "default_zoom": 8,
+  "acquisition_gaps": [
+    "2026-07-27/2026-08-10"
+  ],
+  "timeline": [
+    {
+      "date": "2026-09-04",
+      "granule_id": "NISAR_L2_PR_GCOV_029_149_D_076_2005_QPDH_A_20260904T130738_20260904T130813_P05023_N_F_J_001",
+      "track_frame": "149/076",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 744.35,
+        "flooded_veg_km2": 15.08,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 51402.9,
+        "valid_pixel_pct": 56.3,
+        "aoi_coverage_pct": 100.0,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": false
+      }
+    },
+    {
+      "date": "2026-09-28",
+      "granule_id": "NISAR_L2_PR_GCOV_031_149_D_076_2005_QPDH_A_20260928T130738_20260928T130813_P05023_N_F_J_001",
+      "track_frame": "149/076",
+      "polarization": "HH+HV",
+      "maturity": "PROVISIONAL",
+      "crid": "P05023",
+      "metrics": {
+        "open_water_km2": 569.66,
+        "flooded_veg_km2": 0.0,
+        "paddy_like_km2": null,
+        "natural_flooded_veg_km2": null,
+        "dry_km2": 51804.38,
+        "valid_pixel_pct": 56.5,
+        "aoi_coverage_pct": 100.0,
+        "otsu_hh_db": -16.0,
+        "otsu_hv_db": -22.0,
+        "is_reference": true
+      }
+    }
+  ],
+  "provenance": {
+    "granules": [
+      "NISAR_L2_PR_GCOV_029_149_D_076_2005_QPDH_A_20260904T130738_20260904T130813_P05023_N_F_J_001",
+      "NISAR_L2_PR_GCOV_031_149_D_076_2005_QPDH_A_20260928T130738_20260928T130813_P05023_N_F_J_001"
+    ],
+    "otsu_thresholds": {
+      "2026-09-04": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      },
+      "2026-09-28": {
+        "hh_db": -16.0,
+        "hv_db": -22.0
+      }
+    },
+    "delta_hh_params": {
+      "min_delta_hh_db": 3.0,
+      "min_delta_ratio_db": 1.5
+    },
+    "reference_date": "2026-09-28",
+    "calibration_check": null,
+    "masks": {
+      "vegetation": "none supplied \u2014 double-bounce test applied to all non-water pixels",
+      "slope": "not applied (no DEM supplied)",
+      "validity": "GCOV mask 0 (not fully focused) / 255 (outside swath), non-finite and \u03b30<=0 excluded"
+    },
+    "threshold_method": "Otsu on the dark tail (HH<-10 dB, HV<-16 dB), capped to HH -22..-16 dB and HV -30..-22 dB so land/sand/wet soil is not called water",
+    "processing": {
+      "generated_at": "2026-11-15T00:21:58Z",
+      "grid_res_m": 338.0,
+      "speckle": "multilook + 3x3 median (linear)",
+      "crs_native": [
+        32644
+      ],
+      "single_pol_mode": false,
+      "pipeline": "scripts/02_subset_and_classify_sar.py",
+      "stage03_at": "2026-11-15T00:21:58Z"
+    },
+    "limitations": [
+      "Radar-derived surface/canopy-water indication for inspection, not confirmed flood depth.",
+      "Hydroperiod expressed as M of N valid NISAR observations, not days flooded.",
+      "Acquisition gap(s) 2026-07-27/2026-08-10 are real (no suitable same-track pass) and shown explicitly, never interpolated.",
+      "Only 2 same-track dates available \u2014 Plan C change comparison, not a full-season hydroperiod."
+    ],
+    "gmm": {
+      "k": 5,
+      "k_wet_gmm": 4,
+      "method": "never-wet pixels = Stable Dry Upland by definition; GMM clusters the ever-wet pixels",
+      "features": [
+        "mean_HH",
+        "min_HH",
+        "max_dHH",
+        "mean_HH-HV",
+        "M_open/N",
+        "M_fveg/N"
+      ],
+      "random_state": 42,
+      "regime_area_km2": {
+        "Permanent River / Deep Channel": 537.21,
+        "Seasonal Open Floodplain / Beel": 244.16,
+        "Seasonally Flooded Canopy / Tall Grassland": 10.97,
+        "Seasonal Paddy-Like Inundation Cycle": 0.0,
+        "Stable Dry Upland / Levee": 51581.7
+      },
+      "mapping_rule": "wet<15%\u2192Dry Upland; open-dominant & open\u226590%\u2192Permanent River; open-dominant\u2192Beel; flooded-veg-dominant & cropland\u226550%\u2192Paddy cycle; else\u2192Flooded Canopy"
+    }
+  },
+  "name": "N24 7 E82 9",
+  "track_frame": "149/076",
+  "polarization": "HH+HV",
+  "single_pol_mode": false,
+  "fallback_plan": "C",
+  "reference_date": "2026-09-28",
+  "layers": [
+    "open_water",
+    "flooded_veg",
+    "hydroperiod",
+    "gmm_regimes"
+  ],
+  "synthetic_test_data": false,
+  "grid": {
+    "rows": 898,
+    "cols": 903,
+    "res_m": 338.0,
+    "pixel_area_km2": 0.11425
+  },
+  "season_summary": {
+    "n_dates": 2,
+    "ever_wet_km2": 792.34,
+    "wet_every_observation_km2": 537.21,
+    "max_wet_observations": 2
+  }
+}
