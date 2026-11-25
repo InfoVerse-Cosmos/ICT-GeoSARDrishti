@@ -1,10 +1,10 @@
 {
   "_note": "Offline mirror (SRS \u00a77.2 rule 3) of the AOIs analysed here. Generated from the packs in services/api/data_store.",
-  "generated_at": "2026-11-25T10:04:12Z",
+  "generated_at": "2026-11-25T10:24:56Z",
   "aois": [
     {
       "aoi_id": "aoi_n24_7_e82_9",
-      "name": "N24 7 E82 9",
+      "name": "Gandak Basin \u2014 lower plains, India (\u224824.8\u00b0N, 82.9\u00b0E)",
       "bounds": [
         81.4623570772245,
         23.4319123207809,
@@ -84,7 +84,7 @@
     },
     {
       "aoi_id": "aoi_n26_7_e83_5",
-      "name": "N26 7 E83 5",
+      "name": "Gandak Basin \u2014 central reach, India\u2013Nepal plains (\u224826.8\u00b0N, 83.5\u00b0E)",
       "bounds": [
         81.9292635109626,
         25.4420795309072,
@@ -184,7 +184,7 @@
     },
     {
       "aoi_id": "aoi_n28_7_e84_1",
-      "name": "N28 7 E84 1",
+      "name": "Gandak Basin \u2014 upper catchment, central Nepal (\u224828.8\u00b0N, 84.1\u00b0E)",
       "bounds": [
         82.5140680761058,
         27.3818447228076,

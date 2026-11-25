@@ -6,6 +6,7 @@ global exception handlers so no request ever returns a raw 500 to the client.
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,10 +23,22 @@ logger = logging.getLogger("geosar")
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Load AOI packs into memory on startup (SRS §6)."""
+    store.load()
+    logger.info("Loaded %d analysed AOI pack(s) from %s", len(store.list_aois()), store.data_dir)
+    if store.using_fallback:
+        logger.warning("No analysed data in %s - put NISAR .h5 files in DATA/ and run analyze.", store.data_dir)
+    yield
+
+
 app = FastAPI(
     title="GeoSAR Drishti API",
     description="NASA-ISRO NISAR L-band monsoon water intelligence (CH-06).",
     version=__version__,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -35,14 +48,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def _startup() -> None:
-    store.load()
-    logger.info("Loaded %d analysed AOI pack(s) from %s", len(store.list_aois()), store.data_dir)
-    if store.using_fallback:
-        logger.warning("No analysed data in %s - put NISAR .h5 files in DATA/ and run analyze.", store.data_dir)
 
 
 @app.exception_handler(Exception)
