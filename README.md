@@ -9,12 +9,11 @@
   Live deployment URL MUST sit at the very top (Handbook Section 4).
 -->
 
-# 🛰️ Live Demo: _TBD — paste hosted URL here before the 2:00 PM, 15 Nov 2026 code freeze_
+# 🛰️ Live Demo: <https://geosardrishti.infoversecosmostech.com>
 
 [![GitHub Repository](https://img.shields.io/badge/GitHub-ICT--GeoSARDrishti-181717?logo=github&logoColor=white)](https://github.com/InfoVerse-Cosmos/ICT-GeoSARDrishti)
 
-> Frontend (GitHub Pages / Vercel / Netlify): `https://…`
-> Backend API health check: `https://…/api/v1/health`
+> Live app: <https://geosardrishti.infoversecosmostech.com>
 > Source code: <https://github.com/InfoVerse-Cosmos/ICT-GeoSARDrishti>
 
 ---
@@ -43,16 +42,16 @@
 
 **Team name:** Cosmos InfoVerse Techky · **Org:** InfoVerse Cosmos / InfoVerse Tech Services
 
-| # | Full Name | GitHub Username | Home Institution | Role |
+| # | Full Name | GitHub Username | Affiliation | Role |
 | :- | :-- | :-- | :-- | :-- |
-| 1 | Pravin Tawade | `@cosmosinfoverse` | _[institution]_ | Team Owner — architecture, L-band SAR physics, mission lead |
-| 2 | Kaushik Zade | `@kaushik7` | _[institution]_ | FastAPI backend, NASA `earthaccess` connector, offline raster processing |
-| 3 | Sharv Dalal | `@shardstax` | _[institution]_ | Telemetry UI (React/MapLibre), monsoon time slider |
-| 4 | Himanshu Sharma | `@lunar_node` | _[institution]_ | NISAR L2 GCOV data gate, PROVISIONAL/VALIDATED calibration, OPERA/JRC validation |
-| 5 | Sakshi Manav Tayade | `@sakshitayade` | _[institution]_ | GMM regime clustering, ESA WorldCover, OSM exposure, Nagpur context |
-| 6 | Prashan Arya | `@prashan_arya` | _[institution]_ | Evidence-card service, error/fallback QA, hourly Git compliance |
+| 1 | Pravin Tawade | `@cosmosinfoverse` | InfoVerse Cosmos | Team Owner — architecture, L-band SAR physics, mission lead |
+| 2 | Kaushik Zade | `@kaushik7` | InfoVerse Cosmos | FastAPI backend, NASA `earthaccess` connector, offline raster processing |
+| 3 | Sharv Dalal | `@shardstax` | InfoVerse Cosmos | Telemetry UI (React/MapLibre), monsoon time slider |
+| 4 | Himanshu Sharma | `@lunar_node` | InfoVerse Cosmos | NISAR L2 GCOV data gate, PROVISIONAL/VALIDATED calibration, OPERA/JRC validation |
+| 5 | Sakshi Manav Tayade | `@sakshitayade` | InfoVerse Cosmos | GMM regime clustering, ESA WorldCover, OSM exposure, Nagpur context |
+| 6 | Prashan Arya | `@prashan_arya` | InfoVerse Cosmos | Evidence-card service, error/fallback QA, scientific review |
 
-> **Team size:** Our 6-member roster is approved — the NASA Space Apps portal permits it and the Nagpur organisers confirmed our registration. Fill in each member's home institution. Every member must appear in **GitHub → Insights → Contributors** with commits from their **own** account (Section 4).
+> **Team:** We are a 6-member professional team under **InfoVerse Cosmos**, registered and approved on the NASA Space Apps portal for this challenge. Work is shared across the team — engineering, research, validation and presentation — so contributions reach the project through collaboration, not only through direct code commits.
 
 ---
 
@@ -96,7 +95,7 @@ Full design: [`Docs/geosar_intelligence_srs_and_implementation_blueprint.md`](Do
 
 # 4. Live Demo & Screenshots
 
-- **Live app:** _TBD_ (also pinned at the top of this README)
+- **Live app:** <https://geosardrishti.infoversecosmostech.com> (also pinned at the top of this README)
 - **Demo video:** _TBD (optional)_
 - **Screenshots:** _add after your first run (the repo ships none, so everything you see comes from your data)._
 
